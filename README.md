@@ -39,5 +39,5 @@ alias mps="/path/to/mps.sh"<br>
 Examples:<br>
 mps album "peace sells"<br>
 mps album "peace sells" | mps add<br>
-mps ls | grep Megadeth | mps add<br>
+mps ls | grep -i megadeth | mps add<br>
 mps add "Megadeth - Peace Sells.mp3"<br>
