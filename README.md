@@ -1,42 +1,32 @@
-  MPS - Mplayer script 2022-2023 Marc Carlson<br><br>
 
-  Usage: ./mps.sh [options]
+MPS is a bash script to control Mplayer.<br>
+Create playlists and listen to music.<br><br>
 
-  title \<title\> - add tracks by title<br>
-  album \<album\> - add tracks by album<br>
-  genre \<genre\> - add tracks by genre<br>
-  artist \<artist\> - add tracks by artist<br><br>
+MPS supports the following features<br><br>
 
-  ls - list songs by filename in directory<br>
-  add - add songs by filename. Can be used with ls<br><br>
+* Command line interface<br>
+* Makes use of mplayers builtin equalizer. Customizable.
+* Search and add tracks by title, genre, album or artist<br>
+* Also supports ls and add features to add tracks to playlists<br>
+* Supports multiple playlists<br>
+* Ability to save and load playlists<br>
+* Full control over Mplayer in the background (slave mode)<br>
+* Supports  repeat and shuffle modes<br>
+* Trackinfo feature to information about currently playing track<br>
+* Status feature to get duration of song, time remaining and percent finished<br>
+* Status feature also has a repeat and random indicator.<br>
+* Show number of tracks and total playlist duration<br>
+* Ability to delete tracks in playlist<br><br>
 
-  play - play tracks in playlist<br>
-  showlist - show tracks in playlist<br>
-  pause - pause/unpause music<br>
-  mute - toggle mplayer mute<br>
-  next - play next track in playlist<br>
-  previous - play previous track<br>
-  repeat - repeat the currently playing track once<br>
-  stop - stop playback<br>
-  trackinfo - show info about currently playing track<br>
-  status - show time remaining and percent finished<br>
-  playtime - show total duration of playlist<br>
-  delete \<track number\> - delete track<br>
-  clear - clear playlist<br><br>
+Requires: mplayer and mp3info
 
-  save \<playlist\> - save playlist named \<playlist\><br>
-  load \<playlist\> - load playlist named \<playlist\><br>
-  remove <playlist> - remove playlist named <playlist><br>
-  lsplaylists - show playlists<br><br>
-
-  -s) shuffle songs (random) - use with play<br>
-  -r) repeat playlist - use with play<br><br>
-
-Create an alias in your .bash_aliases file in Linux or .profile in OpenBSD<br>
-alias mps="/path/to/mps.sh"<br>
+Add an alias to .bash_aliases in Linux or .profile in OpenBSD.<br>
+alias mps="/path/to/mps.sh"<br><br>
 
 Examples:<br>
-mps album "peace sells"<br>
-mps album "peace sells" | mps add<br>
-mps ls | grep -i megadeth | mps add<br>
-mps add "Megadeth - Peace Sells.mp3"<br>
+mps album "back in black"<br>
+mps album "back in black" | mps add<br>
+mps ls | grep -i acdc<br>
+mps ls | grep -i acdc | mps add<br>
+mps add "ACDC - Back in Black.mp3"<br>
+mps load acdc
