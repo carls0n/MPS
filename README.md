@@ -1,6 +1,6 @@
   MPS - Mplayer script 2022-2023 Marc Carlson<br><br>
 
-  Usage: ./mps.sh [options]<br><br>
+  Usage: ./mps.sh [options]
 
   title \<title\> - add tracks by title<br>
   album \<album\> - add tracks by album<br>
