@@ -311,7 +311,7 @@ ps -A | grep mplayer | grep -v grep | if grep -q 'shuffle'; then echo cannot add
 else
 if [ ! -f ~/.mps/$1 ]
 then
-echo "PLaylist doesn't exist." && exit
+echo "Playlist doesn't exist." && exit
 else
 if pgrep -x mplayer >/dev/null
 then
