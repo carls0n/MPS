@@ -1,4 +1,3 @@
-
   MPS - Mplayer script 2022-2023 Marc Carlson<br><br>
 
   Usage: ./mps.sh [options]<br><br>
