@@ -2,7 +2,7 @@ MPS supports the following features<br><br>
 
 * Command line interface<br>
 * Makes use of mplayers builtin equalizer. Customizable.
-* Search and add tracks by title, genre, album or artist<br>
+* Search for and add tracks by title, genre, album or artist<br>
 * Also supports ls and add features to add tracks to playlists<br>
 * Supports multiple playlists<br>
 * Ability to save and load playlists<br>
@@ -25,4 +25,5 @@ mps album "back in black" | mps add<br>
 mps ls | grep -i acdc<br>
 mps ls | grep -i acdc | mps add<br>
 mps add "ACDC - Back in Black.mp3"<br>
+mps save acdc<br>
 mps load acdc
