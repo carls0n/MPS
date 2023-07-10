@@ -3,10 +3,10 @@
 
   Usage: ./mps.sh [options]<br><br>
 
-  title <title> - add tracks by title<br>
-  album <album> - add tracks by album<br>
-  genre <genre> - add tracks by genre<br>
-  artist <artist> - add tracks by artist<br><br>
+  title \<title\> - add tracks by title<br>
+  album \<album\> - add tracks by album<br>
+  genre \<genre\> - add tracks by genre<br>
+  artist \<artist\> - add tracks by artist<br><br>
 
   ls - list songs by filename in directory<br>
   add - add songs by filename. Can be used with ls<br><br>
@@ -22,11 +22,11 @@
   trackinfo - show info about currently playing track<br>
   status - show time remaining and percent finished<br>
   playtime - show total duration of playlist<br>
-  delete <track number> - delete track<br>
+  delete \<track number\> - delete track<br>
   clear - clear playlist<br><br>
 
-  save <playlist> - save playlist named <playlist><br>
-  load <playlist> - load playlist named <playlist><br>
+  save \<playlist\> - save playlist named \<playlist\><br>
+  load \<playlist\> - load playlist named \<playlist\><br>
   remove <playlist> - remove playlist named <playlist><br>
   lsplaylists - show playlists<br><br>
 
