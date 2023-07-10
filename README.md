@@ -12,7 +12,7 @@ MPS supports the following features<br><br>
 * Ability to save and load playlists<br>
 * Full control over Mplayer in the background (slave mode)<br>
 * Supports  repeat and shuffle modes<br>
-* Trackinfo feature to information about currently playing track<br>
+* Trackinfo feature to get information about currently playing track<br>
 * Status feature to get duration of song, time remaining and percent finished<br>
 * Status feature also has a repeat and random indicator.<br>
 * Show number of tracks and total playlist duration<br>
