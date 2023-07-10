@@ -33,7 +33,7 @@
   -s) shuffle songs (random) - use with play<br>
   -r) repeat playlist - use with play<br><br>
 
-Create an alias in your .bashr_aliases file in Linux or .profile in OpenBSD<br>
+Create an alias in your .bash_aliases file in Linux or .profile in OpenBSD<br>
 alias mps="/path/to/mps.sh"<br>
 
 Examples:<br>
