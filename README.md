@@ -1,7 +1,3 @@
-
-MPS is a bash script to control Mplayer.<br>
-Create playlists and listen to music.<br><br>
-
 MPS supports the following features<br><br>
 
 * Command line interface<br>
