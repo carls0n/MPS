@@ -13,19 +13,4 @@
 * Status feature also has a repeat and random status indicator.<br>
 * Show number of tracks and total playlist duration<br>
 * Ability to delete tracks in playlist<br><br>
-
-Requires: mplayer and mp3info
-
-Add an alias to .bash_aliases in Linux or .profile in OpenBSD.<br>
-alias mps="/path/to/mps.sh"<br><br>
-
-Examples:<br>
-mps album "back in black"<br>
-mps album "back in black" | mps add<br>
-mps ls | grep -i acdc<br>
-mps ls | grep -i acdc | mps add<br>
-mps add "ACDC - Back in Black.mp3"<br>
-mps save acdc<br>
-mps load acdc
-
 </h5>
