@@ -1,0 +1,11 @@
+Add an alias to .bash_aliases in Linux or .profile in OpenBSD.
+alias mps="/path/to/mps.sh"
+
+Examples:
+mps album "back in black"
+mps album "back in black" | mps add
+mps ls | grep -i acdc
+mps ls | grep -i acdc | mps add
+mps add "ACDC - Back in Black.mp3"
+mps save acdc
+mps load acdc
