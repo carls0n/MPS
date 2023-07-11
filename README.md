@@ -1,4 +1,4 @@
-MPS supports the following features<br><br>
+<h5>MPS supports the following features<br><br>
 
 * Command line interface<br>
 * Makes use of mplayers builtin equalizer. Customizable.
@@ -27,3 +27,5 @@ mps ls | grep -i acdc | mps add<br>
 mps add "ACDC - Back in Black.mp3"<br>
 mps save acdc<br>
 mps load acdc
+
+</h5>
