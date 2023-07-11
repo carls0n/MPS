@@ -9,7 +9,7 @@
 * Full control over Mplayer in the background (slave mode)<br>
 * Supports  repeat and shuffle modes<br>
 * Trackinfo feature to get information about currently playing track<br>
-* Status feature to get duration of song, time remaining and percent finished<br>
+* Status feature to get time remaining and percent finished<br>
 * Status feature also has a repeat and random status indicator.<br>
 * Show number of tracks and total playlist duration<br>
 * Ability to delete tracks in playlist<br><br>
