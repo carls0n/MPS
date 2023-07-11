@@ -386,5 +386,5 @@ mkfifo /tmp/fifo; fi
 fi
 }
 
-$@
 get_args $@
+$@
