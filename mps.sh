@@ -178,7 +178,7 @@ if [[ -f "$music/$@" ]]
 then
 echo "$music/$@" >> /tmp/playlist && exit
 fi
-echo No matches found 
+echo No matches found && exit
 fi
 
 if [[ $test ]] && [[ $random ]]
