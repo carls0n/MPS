@@ -226,30 +226,31 @@ printf "$number tracks - Total playtime: %02d:%02d:%02d\n" $((duration / 3600)) 
 }
 
 function save {
-[[ ! -d ~/.mps ]] && mkdir ~/.mps
-[[ $1 ]] && [[ ! -f ~/.mps/$1 ]] &&
-cp /tmp/playlist ~/.mps/$1 && exit
+[[ ! -d $playlists ]] && mkdir $playlists
+[[ $1 ]] && [[ ! -f $playlists/$1 ]] &&
+cp /tmp/playlist $playlists/$1 && exit
 printf "Playlist already exists\n"
 }
 
+
 function load {
 [[ $random ]] && shuffle_error && exit
-[[ ! -f ~/.mps/$1 ]] && echo "Playlist doesn't exist." && exit
+[[ ! -f $playlists/$1 ]] && echo "Playlist doesn't exist." && exit
 [[ $test ]] &&
-cat ~/.mps/$1 >> /tmp/playlist &&
+cat $playlists/$1 >> /tmp/playlist &&
 echo "loadlist $playlists/$1 2" > /tmp/fifo &&
 echo "Playlist loaded -> $1" && exit
-cat ~/.mps/$1 >> /tmp/playlist
+cat $playlists/$1 >> /tmp/playlist
 echo "Playlist loaded -> $1"
 }
 
 function lsplaylists {
-[[ -d ~/.mps ]] && find ~/.mps/ -type f -exec basename {} \; && exit
+[[ -d $playlists ]] && find $playlists -type f -exec basename {} \; && exit
 printf "no playlists found\n"
 }
 
 function remove {
-[[ -f ~/.mps/$1 ]] && rm ~/.mps/$1 && exit
+[[ -f $playlists/$1 ]] && rm $playlists/$1 && exit
 printf "No such playlist\n"
 }
 
