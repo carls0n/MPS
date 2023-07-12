@@ -152,7 +152,7 @@ function add {
 [[ $1 ]] && echo "Use mps title \"title\" | mps add" && exit
 [[ -e /tmp/new ]] && rm /tmp/new
 [[ $random ]] && shuffle_error && exit
-[[ $test ]] && [[ -z $random ]] && playing || not_playing && exit
+[[ $test ]] && [[ -z $random ]] && playing && exit || not_playing && exit
 }
 
 function next {
