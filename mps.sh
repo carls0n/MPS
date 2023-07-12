@@ -30,8 +30,8 @@ echo "  album <album> - search tracks by album"
 echo "  genre <genre> - search tracks by genre"
 echo "  artist <artist> - search tracks by artist"
 echo ""
-echo "  ls - list songs by filename in directory"
-echo "  add - add songs by filename. Can be use with ls"
+echo "  ls - list tracks in directory"
+echo "  add - add tracks. Can also be use with ls"
 echo ""
 echo "  play - play tracks in playlist"
 echo "  showlist - show tracks in playlist"
@@ -47,9 +47,9 @@ echo "  playtime - show total duration of playlist"
 echo "  delete <track number> - delete track"
 echo "  clear - clear playlist"
 echo ""
-echo "  save <playlist> - save playlist named <playlist>"
-echo "  load <playlist> - load playlist named <playlist>"
-echo "  remove <playlist> - remove playlist named <playlist>"
+echo "  save <playlist> - save playlist"
+echo "  load <playlist> - load playlist"
+echo "  remove <playlist> - remove playlist"
 echo "  lsplaylists - show playlists"
 echo ""
 echo "  -s) shuffle songs (random) - use with play"
@@ -75,137 +75,84 @@ type -P mplayer 1>/dev/null
 type -P ffmpeg 1>/dev/null
 if [[ ! -d $music ]]; then echo $music does not exist, edit your music directory in the MPS script. && exit; fi
 
-function genre {
-if [[ -e /tmp/out ]]
-then
-rm /tmp/out
-fi
+function ls {
+find $music -type f -maxdepth 1 -exec basename {} \;| sort
+}
+
+function title { 
+[[ -e /tmp/out ]] && rm /tmp/out
 for file in $music/*.mp3
-do if [[ "$(mp3info -p '%g' "$file")" == "$@"* ]]
-then
-echo $file | awk -F "/" '{print $NF}' >> /tmp/out
-fi
+do
+[[ "$(mp3info -p '%t' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
 done
-if [ -e /tmp/out ]
-then cat /tmp/out && rm /tmp/out
-else echo "No matches found"
-fi
+[[ -e /tmp/out ]] && cat /tmp/out && rm /tmp/out && exit
+echo "No matches found"
 }
 
 function album { 
-if [[ -e /tmp/out ]]
-then
-rm /tmp/out
-fi
+[[ -e /tmp/out ]] && rm /tmp/out
 for file in $music/*.mp3
-do if [[ "$(mp3info -p '%l' "$file")" == "$@"* ]]
-then
-echo $file | awk -F "/" '{print $NF}' >> /tmp/out
-fi
+do
+[[ "$(mp3info -p '%l' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
 done
-if [ -e /tmp/out ]
-then cat /tmp/out && rm /tmp/out
-else echo "No matches found"
-fi
+[[ -e /tmp/out ]] && cat /tmp/out && rm /tmp/out && exit
+echo "No matches found"
 }
 
-function artist {
-if [[ -e /tmp/out ]]
-then
-rm /tmp/out
-fi
+function artist { 
+[[ -e /tmp/out ]] && rm /tmp/out
 for file in $music/*.mp3
-do if [[ "$(mp3info -p '%a' "$file")" == "$@"* ]]
-then
-echo $file | awk -F "/" '{print $NF}' >> /tmp/out
-fi
+do
+[[ "$(mp3info -p '%a' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
 done
-if [ -e /tmp/out ]
-then cat /tmp/out && rm /tmp/out
-else echo "No matches found"
-fi
+[[ -e /tmp/out ]] && cat /tmp/out && rm /tmp/out && exit
+echo "No matches found"
 }
 
-function title {
-if [[ -e /tmp/out ]]
-then
-rm /tmp/out
-fi
+function genre { 
+[[ -e /tmp/out ]] && rm /tmp/out
 for file in $music/*.mp3
-do if [[ "$(mp3info -p '%t' "$file")" == "$@"* ]]
-then
-echo $file | awk -F "/" '{print $NF}' >> /tmp/out
-fi
+do
+[[ "$(mp3info -p '%g' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
 done
-if [ -e /tmp/out ]
-then cat /tmp/out && rm /tmp/out
-else echo "No matches found"
-fi
+[[ -e /tmp/out ]] && cat /tmp/out && rm /tmp/out && exit
+echo "No matches found"
+}
+
+function no_matches {
+printf "No matches found\n"
+}
+
+function playing {
+while read -r results
+do
+[[ -e $music/$results ]] &&
+echo "$music/$results" >> /tmp/playlist && echo "$music/$results" >> /tmp/new
+done &&
+echo "loadlist /tmp/new 2" >> /tmp/fifo && exit
+no_matches
+}
+
+function not_playing {
+while read -r results
+do
+[[ -e $music/$results ]] && echo "$music/$results" >> /tmp/playlist
+done && exit
+no_matches
 }
 
 function shuffle_error {
 printf "Cannot add tracks in shuffle mode\n" && exit
 }
 
-function ls {
-find $music -type f -maxdepth 1 -exec basename {} \;| sort
-}
-
-function add {
-if [[ -e /tmp/new ]]; then rm /tmp/new
-fi
 test=$(pgrep mplayer)
 random=$(ps -A | grep mplayer | grep -v grep | grep shuffle)
-if [[ $test ]] && [[ $random ]]; then
-shuffle_error
-fi
 
-if pgrep -x mplayer >/dev/null &&  [ "$1" ]
-then
-
-if [[ ! -f "$music/$@" ]]
-then
-echo No matches found && exit
-fi
-
-echo "$music/$@" >> /tmp/playlist && echo "$music/$@" >> /tmp/new
-echo "loadlist /tmp/new 2" > /tmp/fifo && exit
-
-elif ! pgrep -x mplayer >/dev/null && [ "$1" ]
-then
-
-if [[ -f "$music/$@" ]]
-then
-echo "$music/$@" >> /tmp/playlist && exit
-fi
-echo No matches found && exit
-fi
-
-if [[ $test ]] && [[ $random ]]
-then
-shuffle_error
-elif [[ $test ]]
-then
-
-while read -r results
-do
-if [[ -e $music/$results ]]; then
-echo "$music/$results" >> /tmp/playlist && echo "$music/$results" >> /tmp/new
-else echo No matches found
-fi
-done
-echo "loadlist /tmp/new 2" >> /tmp/fifo
-
-elif [[ -z $test ]]
-then
-while read -r results
-do
-if [[ -e $music/$results ]]; then
-echo "$music/$results" >> /tmp/playlist
-else echo No matches found
-fi
-done
-fi
+function add {
+[[ $1 ]] && echo "Use mps title \"title\" | mps add" && exit
+[[ -e /tmp/new ]] && rm /tmp/new
+[[ $random ]] && shuffle_error && exit
+[[ $test ]] && [[ -z $random ]] && playing || not_playing && exit
 }
 
 function next {
@@ -229,18 +176,12 @@ echo "mute" > /tmp/fifo
 }
 
 function clear {
-if  [ ! -f /tmp/playlist ]
-then
-echo No songs in playlist && exit
-fi
+[[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 rm /tmp/playlist && exit
 }
 
 function showlist {
-if [ ! -f /tmp/playlist ]
-then
-echo No songs in playlist && exit
-fi
+[[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 while read line
 do
 printf "$(mp3info -p '%a - %t' "$line")\n"
@@ -259,8 +200,7 @@ fi
 }
 
 function status {
-if pgrep -x mplayer > /dev/null
-then
+[[ ! $test ]] && printf "mplayer is not running\n" && exit
 echo get_time_pos > /tmp/fifo
 echo get_percent_pos > /tmp/fifo
 sleep 0.001
@@ -273,117 +213,64 @@ percent=$(tail /tmp/log | grep PERCENT | sed 's/ANS_PERCENT_POSITION=//g' | tail
 random=$(ps -A | grep mplayer | grep -v grep | if grep -q '\-shuffle'; then printf " Random: on"; else printf " Random: off"; fi)
 repeat=$(ps -A | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off\n"; fi)
 printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat\n" $((remain / 60 % 60)) $((remain % 60))
-else printf "mplayer is not running.\n"
-fi
 }
 
 function playtime  {
-if [ -f /tmp/playlist ]
-then
+[[ ! -f /tmp/playlist ]] &&  printf "No songs in playlist\n" && exit
 while read song; do
 length=$(mp3info -p '%S ' "$song")
 duration=$((duration+length))
 done< /tmp/playlist
 number=$(cat /tmp/playlist | wc -l | awk '{print $1}')
 printf "$number tracks - Total playtime: %02d:%02d:%02d\n" $((duration / 3600)) $((duration / 60 % 60)) $((duration % 60))
-else printf "No songs in playlist.\n"
-fi
 }
 
 function save {
-if [ ! -d ~/.mps ]
-then
-mkdir ~/.mps
-fi
-if [ $1 ]
-then
-if [ ! -f ~/.mps/$1 ]
-then
-cp /tmp/playlist ~/.mps/$1
-else
+[[ ! -d ~/.mps ]] && mkdir ~/.mps
+[[ $1 ]] && [[ ! -f ~/.mps/$1 ]] &&
+cp /tmp/playlist ~/.mps/$1 && exit
 printf "Playlist already exists\n"
-fi
-fi
 }
 
 function load {
-ps -A | grep mplayer | grep -v grep | if grep -q 'shuffle'; then echo cannot add tracks in shuffle mode && exit
-else
-if [ ! -f ~/.mps/$1 ]
-then
-echo "Playlist doesn't exist." && exit
-else
-if pgrep -x mplayer >/dev/null
-then
-cat ~/.mps/$1 >> /tmp/playlist
-echo "loadlist $playlists/$1 2" > /tmp/fifo
-echo "Playlist loaded -> $1"
-elif ! pgrep -x mplayer >/dev/null
-then
+[[ $random ]] && shuffle_error && exit
+[[ ! -f ~/.mps/$1 ]] && echo "Playlist doesn't exist." && exit
+[[ $test ]] &&
+cat ~/.mps/$1 >> /tmp/playlist &&
+echo "loadlist $playlists/$1 2" > /tmp/fifo &&
+echo "Playlist loaded -> $1" && exit
 cat ~/.mps/$1 >> /tmp/playlist
 echo "Playlist loaded -> $1"
-fi
-fi
-fi
 }
 
 function lsplaylists {
-if [ -d ~/.mps ]
-then
-find ~/.mps/ -type f -exec basename {} \;
-else
+[[ -d ~/.mps ]] && find ~/.mps/ -type f -exec basename {} \; && exit
 printf "no playlists found\n"
-fi
 }
 
 function remove {
-if [ -f ~/.mps/$1 ]
-then
-rm ~/.mps/$1
-else
+[[ -f ~/.mps/$1 ]] && rm ~/.mps/$1 && exit
 printf "No such playlist\n"
-fi
 }
 
 function delete {
-if pgrep -x mplayer >/dev/null
-then
-echo cannot delete tracks during playback
-else
+[[ $test ]] && echo cannot delete tracks during playback && exit
 sed -i "$1"'d' /tmp/playlist && exit
-fi
 }
 
 function stop {
-if pgrep -x mplayer  >/dev/null
-then
-pkill mplayer
-else echo mps already stopped && exit
-fi
+[[ $test ]] && pkill mplayer && exit
+echo mps already stopped && exit
 }
 
 function play {
-if [ ! -f /tmp/playlist ]
-then
-echo No songs in playlist && exit; fi
-if [[ $1 == "-s" ]] || [[ $2 == "-s" ]]
-then
-shuffle="-shuffle"; fi
-if [[ $1 == "-r" ]] || [[ $2 == "-r" ]]
-then
-repeat="-loop 0"; fi
-if [[ $1 == "-rs" ]] || [[ $1 == "-sr" ]]
-then
-repeat="-loop 0" && shuffle="-shuffle"; fi
-if pgrep -x mplayer >/dev/null
-then
-echo mplayer already running && exit
-else
-if [[ ! -e /tmp/fifo ]]
-then
-mkfifo /tmp/fifo; fi
+[[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
+[[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
+[[ $1 == "-s" ]] || [[ $2 == "-s" ]] && shuffle="-shuffle"
+[[ $1 == "-r" ]] || [[ $2 == "-r" ]] && repeat="-loop 0"
+[[ $1 == "-rs" ]] || [[ $1 == "-sr" ]] && repeat="-loop 0" && shuffle="-shuffle"
+[[ $test ]] && echo mplayer already running && exit
 ( mplayer $shuffle $repeat -slave -input file=/tmp/fifo -playlist /tmp/playlist -af equalizer="$eq_settings" > /tmp/log 2>&1 &)
-fi
 }
 
 get_args $@
