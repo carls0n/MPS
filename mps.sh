@@ -177,7 +177,7 @@ echo "mute" > /tmp/fifo
 
 function clear {
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
-[[ $test ]] && echo Cannot clear list while mplayer is running && exit
+[[ $test ]] && pkill mplayer
 rm /tmp/playlist && exit
 }
 
