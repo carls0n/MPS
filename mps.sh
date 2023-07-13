@@ -129,7 +129,7 @@ do
 [[ -e $music/$results ]] &&
 echo "$music/$results" >> /tmp/playlist && echo "$music/$results" >> /tmp/new
 done &&
-echo "loadlist /tmp/new 2" > /tmp/fifo && exit
+echo "loadlist /tmp/new 2" >> /tmp/fifo && exit
 no_matches
 }
 
