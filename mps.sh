@@ -80,7 +80,6 @@ find $music -type f -maxdepth 1 -exec basename {} \;| sort
 }
 
 function title { 
-[[ -e /tmp/out ]] && rm /tmp/out
 for file in $music/*.mp3
 do
 [[ "$(mp3info -p '%t' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
@@ -90,7 +89,6 @@ echo "No matches found"
 }
 
 function album { 
-[[ -e /tmp/out ]] && rm /tmp/out
 for file in $music/*.mp3
 do
 [[ "$(mp3info -p '%l' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
@@ -100,7 +98,6 @@ echo "No matches found"
 }
 
 function artist { 
-[[ -e /tmp/out ]] && rm /tmp/out
 for file in $music/*.mp3
 do
 [[ "$(mp3info -p '%a' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
@@ -110,7 +107,6 @@ echo "No matches found"
 }
 
 function genre { 
-[[ -e /tmp/out ]] && rm /tmp/out
 for file in $music/*.mp3
 do
 [[ "$(mp3info -p '%g' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
