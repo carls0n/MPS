@@ -67,6 +67,7 @@ done
 }
 
 shopt -s nocasematch
+shopt -s nullglob
 
 type -P mp3info 1>/dev/null
 [ "$?" -ne 0 ] && echo "Please install mp3info before using this script." && exit
@@ -79,66 +80,47 @@ function ls {
 find $music -type f -maxdepth 1 -exec basename {} \;| sort
 }
 
-function title { 
-[[ -e /tmp/out ]] && rm /tmp/out
+function title {
 for file in $music/*.mp3
 do
-[[ "$(mp3info -p '%t' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
+[[ $(mp3info -p '%t' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
-[[ -e /tmp/out ]] && cat /tmp/out && rm /tmp/out && exit
-echo "No matches found"
 }
 
-function album { 
-[[ -e /tmp/out ]] && rm /tmp/out
+function album {
 for file in $music/*.mp3
 do
-[[ "$(mp3info -p '%l' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
+[[ $(mp3info -p '%l' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
-[[ -e /tmp/out ]] && cat /tmp/out && rm /tmp/out && exit
-echo "No matches found"
 }
 
-function artist { 
-[[ -e /tmp/out ]] && rm /tmp/out
+function artist {
 for file in $music/*.mp3
 do
-[[ "$(mp3info -p '%a' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
+[[ $(mp3info -p '%a' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
-[[ -e /tmp/out ]] && cat /tmp/out && rm /tmp/out && exit
-echo "No matches found"
 }
 
-function genre { 
-[[ -e /tmp/out ]] && rm /tmp/out
+function genre {
 for file in $music/*.mp3
 do
-[[ "$(mp3info -p '%g' "$file")" == "$@"* ]] && echo $file | awk -F "/" '{print $NF}' >> /tmp/out
+[[ $(mp3info -p '%g' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
-[[ -e /tmp/out ]] && cat /tmp/out && rm /tmp/out && exit
-echo "No matches found"
-}
-
-function no_matches {
-printf "No matches found\n"
 }
 
 function playing {
 while read -r results
 do
-[[ -e $music/$results ]] &&
 echo "$music/$results" >> /tmp/playlist && echo "$music/$results" >> /tmp/new
 done &&
-echo "loadlist /tmp/new 2" >> /tmp/fifo && exit
-no_matches
+echo "loadlist /tmp/new 2" >> /tmp/fifo
 }
 
 function not_playing {
 while read -r results
 do
-[[ -e $music/$results ]] && echo "$music/$results" >> /tmp/playlist
-done && exit
-no_matches
+echo "$music/$results" >> /tmp/playlist 
+done
 }
 
 function shuffle_error {
@@ -152,7 +134,7 @@ function add {
 [[ $1 ]] && echo "Use mps title \"title\" | mps add" && exit
 [[ -e /tmp/new ]] && rm /tmp/new
 [[ $random ]] && shuffle_error && exit
-[[ $test ]] && [[ -z $random ]] && playing || not_playing && exit
+[[ $test ]] && [[ -z $random ]] && playing && exit || not_playing && exit
 }
 
 function next {
@@ -177,6 +159,7 @@ echo "mute" > /tmp/fifo
 
 function clear {
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
+[[ $test ]] && pkill mplayer
 rm /tmp/playlist && exit
 }
 
@@ -203,7 +186,7 @@ function status {
 [[ ! $test ]] && printf "mplayer is not running\n" && exit
 echo get_time_pos > /tmp/fifo
 echo get_percent_pos > /tmp/fifo
-sleep 0.001
+sleep 0.01
 position=$(cat /tmp/log | grep TIME | sed 's/ANS_TIME_POSITION=//g' | sed 's/\..*//' | tail -n 1)
 song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
 sec=$(mp3info -p "%S" "$song")
@@ -231,7 +214,6 @@ function save {
 cp /tmp/playlist $playlists/$1 && exit
 printf "Playlist already exists\n"
 }
-
 
 function load {
 [[ $random ]] && shuffle_error && exit
