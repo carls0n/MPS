@@ -67,7 +67,7 @@ done
 }
 
 shopt -s nocasematch
-shopt -s nullglob
+
 
 type -P mp3info 1>/dev/null
 [ "$?" -ne 0 ] && echo "Please install mp3info before using this script." && exit
