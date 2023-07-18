@@ -2,7 +2,7 @@
 
 * Command line interface<br>
 * Makes use of mplayers builtin equalizer. Customizable.
-* Search for and add tracks by title, genre, album or artist<br>
+* Search for tracks by title, genre, album, artist or range of years<br>
 * Also supports ls and add features to add tracks to playlists<br>
 * Supports multiple playlists<br>
 * Ability to save and load playlists<br>
