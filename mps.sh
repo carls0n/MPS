@@ -29,6 +29,7 @@ echo "  title <title> - search tracks by title"
 echo "  album <album> - search tracks by album"
 echo "  genre <genre> - search tracks by genre"
 echo "  artist <artist> - search tracks by artist"
+echo "  year <range> - search by year (1970-1979)"
 echo ""
 echo "  ls - list tracks in directory"
 echo "  add - add tracks. Can also be use with ls"
@@ -68,7 +69,6 @@ done
 
 shopt -s nocasematch
 
-
 type -P mp3info 1>/dev/null
 [ "$?" -ne 0 ] && echo "Please install mp3info before using this script." && exit
 type -P mplayer 1>/dev/null
@@ -106,6 +106,19 @@ for file in $music/*.mp3
 do
 [[ $(mp3info -p '%g' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
+}
+
+function year {
+string="$1"
+IFS='-=' read -ra split <<< "$string"
+for file in $music/*mp3
+do
+year=$(mp3info -p '%y\n' "$file")
+[[ ! "${split[1]}" ]] && [[ $year -eq $1 ]] &&
+printf "$file" | awk -F "/" '{print $NF}'
+[[ $year -ge "${split[0]}" ]] && [[ $year -le ${split[1]} ]] &&        
+printf "$file" | awk -F "/" '{print $NF}'
+done 
 }
 
 function playing {
