@@ -110,7 +110,7 @@ done
 
 function year {
 string="$1"
-IFS='-=' read -ra split <<< "$string"
+IFS='-' read -ra split <<< "$string"
 for file in $music/*mp3
 do
 year=$(mp3info -p '%y\n' "$file")
@@ -236,7 +236,7 @@ cat $playlists/$1 >> /tmp/playlist &&
 echo "loadlist $playlists/$1 2" > /tmp/fifo &&
 echo "Playlist loaded -> $1" && exit
 cat $playlists/$1 >> /tmp/playlist
-echo "Playlist loaded -> $1"
+echo "Playlist loaded --> $1"
 }
 
 function lsplaylists {
