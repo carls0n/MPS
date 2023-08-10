@@ -56,6 +56,8 @@ echo ""
 echo "  -s) shuffle songs (random) - use with play"
 echo "  -r) repeat playlist - use with play"
 echo ""
+echo "  notify - turn on notifications"
+echo ""
 }
 
 function get_args {
@@ -74,6 +76,8 @@ type -P mp3info 1>/dev/null
 type -P mplayer 1>/dev/null
 [ "$?" -ne 0 ] && echo "Please install mplayer before using this script." && exit
 type -P ffmpeg 1>/dev/null
+[ "$?" -ne 0 ] && echo "Please install ffmpeg before using this script." && exit
+
 if [[ ! -d $music ]]; then echo $music does not exist, edit your music directory in the MPS script. && exit; fi
 
 function ls {
@@ -118,7 +122,7 @@ year=$(mp3info -p '%y\n' "$file")
 printf "$file" | awk -F "/" '{print $NF}'
 [[ $year -ge "${split[0]}" ]] && [[ $year -le ${split[1]} ]] &&        
 printf "$file" | awk -F "/" '{print $NF}'
-done 
+done
 }
 
 function playing {
@@ -257,6 +261,33 @@ sed -i "$1"'d' /tmp/playlist && exit
 function stop {
 [[ $test ]] && pkill mplayer && exit
 echo mps already stopped && exit
+}
+
+function notify {
+ps -A | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then echo notify already enabled && exit
+elif pgrep -x mplayer >/dev/null; then
+(tail -n 25 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
+do
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
+( ffmpeg -y -i "$song" /tmp/album.jpg > /dev/null 2>&1 & ) 
+sleep 0.6
+notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
+done > /dev/null 2>&1 &)
+kill_tail &
+fi
+}
+
+function kill_tail {
+while true; do
+if pgrep -x mplayer >/dev/null
+then
+sleep 1
+else
+pid=$(ps -A | grep tail | grep -v grep | grep "tail -n 25 -f /tmp/log" | awk '{print $1}')
+kill $pid 2>/dev/null
+break
+fi
+done
 }
 
 function play {
