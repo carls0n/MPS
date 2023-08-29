@@ -210,8 +210,8 @@ sec=$(mp3info -p "%S" "$song")
 remain=$((sec-position))
 duration=$(mp3info -p '%m:%02s' "$song")
 percent=$(tail /tmp/log | grep PERCENT | sed 's/ANS_PERCENT_POSITION=//g' | tail -n 1)
-random=$(ps -ef | grep mplayer | grep -v grep | if grep -q '\-shuffle'; then printf " Random: on"; else printf " Random: off"; fi)
-repeat=$(ps -ef | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off\n"; fi)
+random=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-shuffle'; then printf " Random: on"; else printf " Random: off"; fi)
+repeat=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off\n"; fi)
 printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat\n" $((remain / 60 % 60)) $((remain % 60))
 }
 
