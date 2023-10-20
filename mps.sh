@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 # MPS (mplayer script) 2022-2023 Marc Carlson
-
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -17,7 +16,7 @@
 
 music=~/Music
 playlists=/home/user/.mps
-eq_settings="2:7:2:1:1:0:1:2:5:2"
+eq_settings="2:8:2:1:1:0:1:2:5:2"
 
 function usage {
 echo ""
@@ -43,6 +42,7 @@ echo "  previous - play previous track"
 echo "  repeat - repeat the currently playing track once"
 echo "  stop - stop playback"
 echo "  trackinfo - show info about currently playing track"
+echo "  albuminfo - show album information."
 echo "  status - show time remaining and percent finished"
 echo "  playtime - show total duration of playlist"
 echo "  delete <track number> - delete track"
@@ -76,8 +76,6 @@ type -P mp3info 1>/dev/null
 type -P mplayer 1>/dev/null
 [ "$?" -ne 0 ] && echo "Please install mplayer before using this script." && exit
 type -P ffmpeg 1>/dev/null
-[ "$?" -ne 0 ] && echo "Please install ffmpeg before using this script." && exit
-
 if [[ ! -d $music ]]; then echo $music does not exist, edit your music directory in the MPS script. && exit; fi
 
 function ls {
@@ -194,7 +192,7 @@ then
 song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
 count=$(cat -n /tmp/playlist | grep "$song" | awk '{print $1}')
 number=$(cat /tmp/playlist | wc -l | awk '{print $1}')
-printf "Track $count/$number - $(mp3info -p '%y %a - %t (%m:%02s)' "$song")\n"
+printf "Track $count/$number - $(mp3info -p '%a - %t (%m:%02s)' "$song")\n"
 else printf "mplayer is not running.\n"
 fi
 }
@@ -263,6 +261,17 @@ function stop {
 echo mps already stopped && exit
 }
 
+#function play {
+#[[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
+#[[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
+#[[ $1 == "-s" ]] || [[ $2 == "-s" ]] && shuffle="-shuffle"
+#[[ $1 == "-r" ]] || [[ $2 == "-r" ]] && repeat="-loop 0"
+#[[ $1 == "-rs" ]] || [[ $1 == "-sr" ]] && repeat="-loop 0" && shuffle="-shuffle"
+#[[ $1 == "n" ]] || [[ $2 == "n" ]] || [[ $3 == "n" ]] && notify
+#[[ $test ]] && echo mplayer already running && exit
+#( mplayer $shuffle $repeat -slave -input file=/tmp/fifo -playlist /tmp/playlist -af equalizer="$eq_settings" > /tmp/log 2>&1 &)
+#}
+
 function notify {
 ps -A | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then echo notify already enabled && exit
 elif pgrep -x mplayer >/dev/null; then
@@ -275,6 +284,11 @@ notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
 done > /dev/null 2>&1 &)
 kill_tail &
 fi
+}
+
+function albuminfo {
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1)
+printf "$(mp3info -p '%a - %l (%y)\n' "$song")\n"
 }
 
 function kill_tail {
