@@ -13,5 +13,6 @@
 * Status feature also has a repeat and random status indicator.<br>
 * Show number of tracks and total playlist duration<br>
 * Ability to delete tracks in playlist<br>
-* New! Turn on notifications.
+* Turn on notifications.
+* New! Albuminfo command to get album info and year<br>
 </h5>
