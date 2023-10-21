@@ -261,17 +261,6 @@ function stop {
 echo mps already stopped && exit
 }
 
-#function play {
-#[[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
-#[[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
-#[[ $1 == "-s" ]] || [[ $2 == "-s" ]] && shuffle="-shuffle"
-#[[ $1 == "-r" ]] || [[ $2 == "-r" ]] && repeat="-loop 0"
-#[[ $1 == "-rs" ]] || [[ $1 == "-sr" ]] && repeat="-loop 0" && shuffle="-shuffle"
-#[[ $1 == "n" ]] || [[ $2 == "n" ]] || [[ $3 == "n" ]] && notify
-#[[ $test ]] && echo mplayer already running && exit
-#( mplayer $shuffle $repeat -slave -input file=/tmp/fifo -playlist /tmp/playlist -af equalizer="$eq_settings" > /tmp/log 2>&1 &)
-#}
-
 function notify {
 ps -A | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then echo notify already enabled && exit
 elif pgrep -x mplayer >/dev/null; then
