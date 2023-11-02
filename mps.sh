@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
-music=/Music
+music=~/Music
 playlists=/home/user/.mps
 eq_settings="2:7:2:1:1:0:1:2:5:2"
 
