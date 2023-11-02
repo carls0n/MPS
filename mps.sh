@@ -14,14 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
-music=~/Music
+music=/Music
 playlists=/home/user/.mps
-eq_settings="2:8:2:1:1:0:1:2:5:2"
+eq_settings="2:7:2:1:1:0:1:2:5:2"
 
 function usage {
 echo ""
 echo "  MPS - Mplayer script 2022-2023 Marc Carlson"
-echo ""
 echo "  Usage: mps [options]"
 echo ""
 echo "  title <title> - search tracks by title"
@@ -31,7 +30,7 @@ echo "  artist <artist> - search tracks by artist"
 echo "  year <range> - search by year (1970-1979)"
 echo ""
 echo "  ls - list tracks in directory"
-echo "  add - add tracks. Can also be use with ls"
+echo "  add - add tracks. Can also be used with ls"
 echo ""
 echo "  play - play tracks in playlist"
 echo "  showlist - show tracks in playlist"
@@ -42,7 +41,7 @@ echo "  previous - play previous track"
 echo "  repeat - repeat the currently playing track once"
 echo "  stop - stop playback"
 echo "  trackinfo - show info about currently playing track"
-echo "  albuminfo - show album information."
+echo "  albuminfo - show album information"
 echo "  status - show time remaining and percent finished"
 echo "  playtime - show total duration of playlist"
 echo "  delete <track number> - delete track"
@@ -119,7 +118,7 @@ year=$(mp3info -p '%y\n' "$file")
 [[ ! "${split[1]}" ]] && [[ $year -eq $1 ]] &&
 printf "$file" | awk -F "/" '{print $NF}'
 [[ $year -ge "${split[0]}" ]] && [[ $year -le ${split[1]} ]] &&        
-printf "$file" | awk -F "/" '{print $NF}'
+printf "$file" | awk -F "/" '{print $NF}' || [[ $year -eq "1" ]]
 done
 }
 
@@ -180,10 +179,19 @@ rm /tmp/playlist && exit
 
 function showlist {
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
+if [[ ! $1 ]]
+then
 while read line
 do
 printf "$(mp3info -p '%a - %t' "$line")\n"
 done< /tmp/playlist
+elif [[ $1 == "-n" ]]
+then
+while read line
+do
+printf "$(mp3info -p '%a - %t' "$line")\n"
+done< /tmp/playlist | cat -n | awk '{$1=$1; print}'
+fi
 }
 
 function trackinfo {
@@ -236,9 +244,9 @@ function load {
 [[ $test ]] &&
 cat $playlists/$1 >> /tmp/playlist &&
 echo "loadlist $playlists/$1 2" > /tmp/fifo &&
-echo "Playlist loaded --> $1" && exit
+echo "Playlist loaded -> $1" && exit
 cat $playlists/$1 >> /tmp/playlist
-echo "Playlist loaded --> $1"
+echo "Playlist loaded -> $1"
 }
 
 function lsplaylists {
