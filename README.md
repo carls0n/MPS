@@ -15,5 +15,5 @@
 * Ability to delete tracks in playlist<br>
 * Turn on notifications.
 * New! Albuminfo command to get album info and year<br>
-* New! Added an -n flag to the showlist to number lines. Handy for using delete.
+* New! Added an -n flag to showlist function to number lines. Handy for using delete.
 </h5>
