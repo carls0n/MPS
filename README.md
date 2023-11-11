@@ -1,4 +1,4 @@
-<h5>MPS supports the following features<br><br>
+MPS supports the following features<br><br>
 
 * Command line interface<br>
 * Makes use of mplayers builtin equalizer. Customizable.
@@ -16,4 +16,4 @@
 * Turn on notifications.
 * New! Albuminfo command to get album info and year<br>
 * New! Added an -n flag to showlist function to number lines. Handy for using delete.
-</h5>
+
