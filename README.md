@@ -1,5 +1,4 @@
-MPS supports the following features<br><br>
-
+#
 * Command line interface<br>
 * Makes use of mplayers builtin equalizer. Customizable.
 * Search for tracks by title, genre, album, artist or range of years<br>
@@ -16,4 +15,4 @@ MPS supports the following features<br><br>
 * Turn on notifications.
 * New! Albuminfo command to get album info and year<br>
 * New! Added an -n flag to showlist function to number lines. Handy for using delete.
-
+#
