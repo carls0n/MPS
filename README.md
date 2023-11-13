@@ -12,7 +12,7 @@
 * Status feature also has a repeat and random status indicator.<br>
 * Show number of tracks and total playlist duration<br>
 * Ability to delete tracks in playlist<br>
-* Turn on notifications.
+* Turn on notifications. (xfce-notify-4.0)
 * New! Albuminfo command to get album info and year<br>
 * New! Added an -n flag to showlist function to number lines. Handy for using delete.
 #
