@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# MPS (mplayer script) 2022-2023 Marc Carlson
+# MPS (mplayer script) 2022-2024 Marc Carlson
 # My other repositories: https://github.com/carls0n/
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
