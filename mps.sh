@@ -210,7 +210,7 @@ function status {
 [[ ! $test ]] && printf "mplayer is not running\n" && exit
 echo get_time_pos > /tmp/fifo
 echo get_percent_pos > /tmp/fifo
-sleep 0.01
+sleep 0.1
 position=$(cat /tmp/log | grep TIME | sed 's/ANS_TIME_POSITION=//g' | sed 's/\..*//' | tail -n 1)
 song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
 sec=$(mp3info -p "%S" "$song")
