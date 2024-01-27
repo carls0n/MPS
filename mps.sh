@@ -305,6 +305,7 @@ done
 function play {
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 [[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
+[[ -e /tmp/log ]] && rm /tmp/log
 [[ $1 == "-s" ]] || [[ $2 == "-s" ]] && shuffle="-shuffle"
 [[ $1 == "-r" ]] || [[ $2 == "-r" ]] && repeat="-loop 0"
 [[ $1 == "-rs" ]] || [[ $1 == "-sr" ]] && repeat="-loop 0" && shuffle="-shuffle"
