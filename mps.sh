@@ -271,7 +271,7 @@ echo mps already stopped && exit
 }
 
 function notify {
-ps -A | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then echo notify already enabled && exit
+ps -x | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then echo notify already enabled && exit
 elif pgrep -x mplayer >/dev/null; then
 (tail -n 25 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
 do
@@ -295,7 +295,7 @@ if pgrep -x mplayer >/dev/null
 then
 sleep 1
 else
-pid=$(ps -A | grep tail | grep -v grep | grep "tail -n 25 -f /tmp/log" | awk '{print $1}')
+pid=$(ps -x | grep tail | grep -v grep | grep "tail -n 25 -f /tmp/log" | awk '{print $1}')
 kill $pid 2>/dev/null
 break
 fi
