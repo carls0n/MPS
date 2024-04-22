@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# MPS (mplayer script) 2022-2024 Marc Carlson
+# MPS (mplayer script) (2022) Marc Carlson
+
 # My other repositories: https://github.com/carls0n/
+
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -16,12 +18,13 @@
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
 music=~/Music
-playlists=/home/user/.mps
-eq_settings="2:7:2:1:1:0:1:2:5:2"
+playlists=/home/marc/.mps
+#eq_settings="2:8:2:1:1:0:1:2:5:2"
+eq_settings="4:8:3:4:1:1:3:4:6:6"
 
 function usage {
 echo ""
-echo "  MPS - Mplayer script 2022-2023 Marc Carlson"
+echo "  MPS - Mplayer script (2022 Marc Carlson)"
 echo "  Usage: mps [options]"
 echo ""
 echo "  title <title> - search tracks by title"
@@ -79,32 +82,32 @@ type -P ffmpeg 1>/dev/null
 if [[ ! -d $music ]]; then echo $music does not exist, edit your music directory in the MPS script. && exit; fi
 
 function ls {
-find $music -maxdepth 1 -type f -exec basename {} \;| sort
+find $music -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.aac" \)  -exec basename {} \;| sort
 }
 
 function title {
-for file in $music/*.mp3
+for file in $music/{*.mp3,*.aac}
 do
 [[ $(mp3info -p '%t' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
 }
 
 function album {
-for file in $music/*.mp3
+for file in $music/{*.mp3,*.aac}
 do
 [[ $(mp3info -p '%l' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
 }
 
 function artist {
-for file in $music/*.mp3
+for file in $music/{*.mp3,*.aac}
 do
 [[ $(mp3info -p '%a' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
 }
 
 function genre {
-for file in $music/*.mp3
+for file in $music/{*.mp3,*.aac}
 do
 [[ $(mp3info -p '%g' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
@@ -113,7 +116,7 @@ done
 function year {
 string="$1"
 IFS='-' read -ra split <<< "$string"
-for file in $music/*mp3
+for file in $music/{*.mp3,*.aac}
 do
 year=$(mp3info -p '%y\n' "$file")
 [[ ! "${split[1]}" ]] && [[ $year -eq $1 ]] &&
