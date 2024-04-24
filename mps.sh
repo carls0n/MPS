@@ -93,22 +93,25 @@ done
 }
 
 function album {
-for file in $music/{*.mp3,*.aac}
+for file in $music/*.mp3 $music/*.aac
 do
+[ -f "$file" ] || continue
 [[ $(mp3info -p '%l' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
 }
 
 function artist {
-for file in $music/{*.mp3,*.aac}
+for file in $music/*.mp3 $music/*.aac
 do
+[ -f "$file" ] || continue
 [[ $(mp3info -p '%a' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
 }
 
 function genre {
-for file in $music/{*.mp3,*.aac}
+for file in $music/*.mp3 $music/*.aac
 do
+[ -f "$file" ] || continue
 [[ $(mp3info -p '%g' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
 }
@@ -116,8 +119,9 @@ done
 function year {
 string="$1"
 IFS='-' read -ra split <<< "$string"
-for file in $music/{*.mp3,*.aac}
+for file in $music/*.mp3 $music/*.aac
 do
+[ -f "$file" ] || continue
 year=$(mp3info -p '%y\n' "$file")
 [[ ! "${split[1]}" ]] && [[ $year -eq $1 ]] &&
 printf "$file" | awk -F "/" '{print $NF}'
