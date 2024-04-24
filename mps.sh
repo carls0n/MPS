@@ -18,7 +18,7 @@
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
 music=~/Music
-playlists=/home/uzer/.mps
+playlists=/home/user/.mps
 #eq_settings="2:8:2:1:1:0:1:2:5:2"
 eq_settings="4:8:3:4:1:1:3:4:6:6"
 
