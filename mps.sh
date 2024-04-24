@@ -18,7 +18,7 @@
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
 music=~/Music
-playlists=/home/user/.mps
+playlists=/home/uzer/.mps
 #eq_settings="2:8:2:1:1:0:1:2:5:2"
 eq_settings="4:8:3:4:1:1:3:4:6:6"
 
@@ -86,8 +86,9 @@ find $music -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.aac" \)  -exec base
 }
 
 function title {
-for file in $music/{*.mp3,*.aac}
+for file in $music/*.mp3 $music/*.aac
 do
+[ -f "$file" ] || continue
 [[ $(mp3info -p '%t' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done | sort
 }
