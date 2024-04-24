@@ -86,11 +86,10 @@ find $music -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.aac" \)  -exec base
 }
 
 function title {
-for file in $music/*.mp3 $music/*.aac
+for file in $music/{*.mp3,*.aac}
 do
-[ -f "$file" ] || continue
 [[ $(mp3info -p '%t' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done
+done | sort
 }
 
 function album {
@@ -98,7 +97,7 @@ for file in $music/*.mp3 $music/*.aac
 do
 [ -f "$file" ] || continue
 [[ $(mp3info -p '%l' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done
+done | sort
 }
 
 function artist {
@@ -106,7 +105,7 @@ for file in $music/*.mp3 $music/*.aac
 do
 [ -f "$file" ] || continue
 [[ $(mp3info -p '%a' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done
+done | sort
 }
 
 function genre {
@@ -114,7 +113,7 @@ for file in $music/*.mp3 $music/*.aac
 do
 [ -f "$file" ] || continue
 [[ $(mp3info -p '%g' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done
+done | sort
 }
 
 function year {
@@ -128,7 +127,7 @@ year=$(mp3info -p '%y\n' "$file")
 printf "$file" | awk -F "/" '{print $NF}'
 [[ $year -ge "${split[0]}" ]] && [[ $year -le ${split[1]} ]] &&        
 printf "$file" | awk -F "/" '{print $NF}' || [[ $year -eq "1" ]]
-done
+done | sort
 }
 
 function playing {
