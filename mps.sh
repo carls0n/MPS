@@ -86,8 +86,9 @@ find $music -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.aac" \)  -exec base
 }
 
 function title {
-for file in $music/{*.mp3,*.aac}
+for file in $music/*.mp3 $music/*.aac
 do
+[ -f "$file" ] || continue
 [[ $(mp3info -p '%t' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done
 }
