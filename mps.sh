@@ -278,7 +278,7 @@ ps -x | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then ech
 elif pgrep -x mplayer >/dev/null; then
 (tail -n 25 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
 do
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'|sed 's/.$//1' | tail -n 1) 
 ffmpeg -y -i "$song" /tmp/album.jpg &
 wait
 notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
