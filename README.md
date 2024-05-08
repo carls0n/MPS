@@ -15,5 +15,4 @@
 * Turn on notifications. (xfce-notify-4.0)
 * New! Albuminfo command to get album info and year<br>
 * New! Added an -n flag to showlist function to number lines. Handy for using delete.
-* New! Added support for AAC's
 #
