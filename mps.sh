@@ -86,33 +86,29 @@ find $music -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.aac" \)  -exec base
 }
 
 function title {
-for file in $music/*.mp3 $music/*.aac
+for file in $music/*.mp3
 do
-[ -f "$file" ] || continue
 [[ $(mp3info -p '%t' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done | sort
 }
 
 function album {
-for file in $music/*.mp3 $music/*.aac
+for file in $music/*.mp3
 do
-[ -f "$file" ] || continue
 [[ $(mp3info -p '%l' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done | sort
 }
 
 function artist {
-for file in $music/*.mp3 $music/*.aac
+for file in $music/*.mp3
 do
-[ -f "$file" ] || continue
 [[ $(mp3info -p '%a' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done | sort
 }
 
 function genre {
-for file in $music/*.mp3 $music/*.aac
+for file in $music/*.mp3
 do
-[ -f "$file" ] || continue
 [[ $(mp3info -p '%g' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
 done | sort
 }
@@ -120,9 +116,8 @@ done | sort
 function year {
 string="$1"
 IFS='-' read -ra split <<< "$string"
-for file in $music/*.mp3 $music/*.aac
+for file in $music/*.mp3
 do
-[ -f "$file" ] || continue
 year=$(mp3info -p '%y\n' "$file")
 [[ ! "${split[1]}" ]] && [[ $year -eq $1 ]] &&
 printf "$file" | awk -F "/" '{print $NF}'
@@ -206,7 +201,7 @@ fi
 function trackinfo {
 if pgrep -x mplayer > /dev/null
 then
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
 count=$(cat -n /tmp/playlist | grep "$song" | awk '{print $1}')
 number=$(cat /tmp/playlist | wc -l | awk '{print $1}')
 printf "Track $count/$number - $(mp3info -p '%a - %t (%m:%02s)' "$song")\n"
@@ -220,7 +215,7 @@ echo get_time_pos > /tmp/fifo
 echo get_percent_pos > /tmp/fifo
 sleep 0.3
 position=$(cat /tmp/log | grep TIME | sed 's/ANS_TIME_POSITION=//g' | sed 's/\..*//' | tail -n 1)
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1'| tail -n 1) 
 sec=$(mp3info -p "%S" "$song")
 remain=$((sec-position))
 duration=$(mp3info -p '%m:%02s' "$song")
@@ -293,7 +288,7 @@ fi
 }
 
 function albuminfo {
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1)
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1)
 printf "$(mp3info -p '%a - %l (%y)\n' "$song")\n"
 }
 
