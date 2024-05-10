@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 # MPS (mplayer script) (2022) Marc Carlson
-
 # My other repositories: https://github.com/carls0n/
 
 # This program is free software: you can redistribute it and/or modify
@@ -19,7 +18,6 @@
 
 music=~/Music
 playlists=/home/user/.mps
-#eq_settings="2:8:2:1:1:0:1:2:5:2"
 eq_settings="4:8:3:4:1:1:3:4:6:6"
 
 function usage {
@@ -60,6 +58,7 @@ echo "  -s) shuffle songs (random) - use with play"
 echo "  -r) repeat playlist - use with play"
 echo ""
 echo "  notify - turn on notifications"
+echo "  notify off- turn off notifications"
 echo ""
 }
 
@@ -221,8 +220,9 @@ remain=$((sec-position))
 duration=$(mp3info -p '%m:%02s' "$song")
 percent=$(tail /tmp/log | grep PERCENT | sed 's/ANS_PERCENT_POSITION=//g' | tail -n 1)
 random=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-shuffle'; then printf " Random: on"; else printf " Random: off"; fi)
-repeat=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off\n"; fi)
-printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat\n" $((remain / 60 % 60)) $((remain % 60))
+repeat=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off"; fi)
+notify=$(ps -x | grep tail | grep -v grep | if grep -q "tail -n 25 -f /tmp/log"; then printf " Notify: on"; else printf " Notify: off\n"; fi)
+printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat $notify\n" $((remain / 60 % 60)) $((remain % 60))
 }
 
 function playtime  {
@@ -274,6 +274,10 @@ echo mps already stopped && exit
 }
 
 function notify {
+if [[ $1 == "off" ]]
+then pid=$(ps -x | grep tail | grep -v grep | grep "tail -n 25 -f /tmp/log" | awk '{print $1}')
+kill $pid 2>/dev/null
+else
 ps -x | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then echo notify already enabled && exit
 elif pgrep -x mplayer >/dev/null; then
 (tail -n 25 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
@@ -283,7 +287,11 @@ ffmpeg -y -i "$song" /tmp/album.jpg &
 wait
 notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
 done > /dev/null 2>&1 &)
+ps -x | grep sleep | grep -v grep | if ! grep -q 'sleep 1'
+then
 kill_tail &
+fi
+fi
 fi
 }
 
