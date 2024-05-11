@@ -88,28 +88,28 @@ function title {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%t' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done | sort
+done
 }
 
 function album {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%l' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done | sort
+done
 }
 
 function artist {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%a' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done | sort
+done
 }
 
 function genre {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%g' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done | sort
+done
 }
 
 function year {
@@ -122,7 +122,7 @@ year=$(mp3info -p '%y\n' "$file")
 printf "$file" | awk -F "/" '{print $NF}'
 [[ $year -ge "${split[0]}" ]] && [[ $year -le ${split[1]} ]] &&        
 printf "$file" | awk -F "/" '{print $NF}' || [[ $year -eq "1" ]]
-done | sort
+done
 }
 
 function playing {
