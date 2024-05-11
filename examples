@@ -1,10 +1,15 @@
 Add an alias to .bash_aliases in Linux or .profile in OpenBSD.
 alias mps="/path/to/mps.sh"
+be sure to reload .bash_aliases - source .bash_aliases
 
 Examples:
 mps album "back in black"
 mps album "back in black" | mps add
+
 mps ls | grep -i acdc
 mps ls | grep -i acdc | mps add
+
 mps save acdc
 mps load acdc
+
+mps artist metallica | grep -v "$(mps album 'master of puppets')" - list all metallica songs with the exception of those on the master of puppets album
