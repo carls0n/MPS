@@ -56,9 +56,10 @@ echo "  lsplaylists - show playlists"
 echo ""
 echo "  -s) shuffle songs (random) - use with play"
 echo "  -r) repeat playlist - use with play"
+echo "  -n) notifications - use with play"
 echo ""
 echo "  notify - turn on notifications"
-echo "  notify off- turn off notifications"
+echo "  notify off - turn off notifications"
 echo ""
 }
 
@@ -88,28 +89,28 @@ function title {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%t' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done
+done | sort
 }
 
 function album {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%l' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done
+done | sort
 }
 
 function artist {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%a' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done
+done | sort
 }
 
 function genre {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%g' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done
+done | sort
 }
 
 function year {
@@ -122,7 +123,7 @@ year=$(mp3info -p '%y\n' "$file")
 printf "$file" | awk -F "/" '{print $NF}'
 [[ $year -ge "${split[0]}" ]] && [[ $year -le ${split[1]} ]] &&        
 printf "$file" | awk -F "/" '{print $NF}' || [[ $year -eq "1" ]]
-done
+done | sort
 }
 
 function playing {
@@ -287,7 +288,7 @@ ffmpeg -y -i "$song" /tmp/album.jpg &
 wait
 notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
 done > /dev/null 2>&1 &)
-ps -x | grep sleep | grep -v grep | if ! grep -q 'sleep 1'
+ps -x | grep sleep | grep -v grep | if ! grep -q '1'
 then
 kill_tail &
 fi
@@ -317,11 +318,12 @@ function play {
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 [[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
 [[ -e /tmp/log ]] && rm /tmp/log
-[[ $1 == "-s" ]] || [[ $2 == "-s" ]] && shuffle="-shuffle"
-[[ $1 == "-r" ]] || [[ $2 == "-r" ]] && repeat="-loop 0"
-[[ $1 == "-rs" ]] || [[ $1 == "-sr" ]] && repeat="-loop 0" && shuffle="-shuffle"
 [[ $test ]] && echo mplayer already running && exit
+[[ "$@" =~ [a-mo-qt-z0-9] ]] && echo valid flags are \(s\) shuffle \(r\) repeat and \(n\) notify && exit
+[[ "$@" =~ 'r' ]] && repeat="-loop 0"
+[[ "$@" =~ 's' ]] && shuffle="-shuffle"
 ( mplayer $shuffle $repeat -slave -input file=/tmp/fifo -playlist /tmp/playlist -af equalizer="$eq_settings" > /tmp/log 2>&1 &)
+[[ "$@" =~ 'n' ]] && notify
 }
 
 get_args $@
