@@ -9,7 +9,7 @@
 * Supports repeat and shuffle modes<br>
 * Trackinfo feature to get information about currently playing track<br>
 * Status feature to get time remaining and percent finished<br>
-* Status feature also has repeat, random and notify status indicators.<br>
+* Status feature also has repeat, random and eq status indicators.<br>
 * Show number of tracks and total playlist duration<br>
 * Ability to delete tracks in playlist<br>
 * Turn on/off notifications on the fly. (xfce-notify-4.0)
