@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-# MPS (mplayer script) (2022) Marc Carlson
+# MPS (mplayer script) 2022 Marc Carlson
 # My other repositories: https://github.com/carls0n/
-
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -18,11 +17,11 @@
 
 music=~/Music
 playlists=/home/user/.mps
-eq_settings="4:8:3:4:1:1:3:4:6:6"
+eq_settings="4:8:2:1:1:0:1:2:5:8"
 
 function usage {
 echo ""
-echo "  MPS - Mplayer script (2022 Marc Carlson)"
+echo "  MPS - Mplayer script 2022 Marc Carlson"
 echo "  Usage: mps [options]"
 echo ""
 echo "  title <title> - search tracks by title"
@@ -56,10 +55,14 @@ echo "  lsplaylists - show playlists"
 echo ""
 echo "  -s) shuffle songs (random) - use with play"
 echo "  -r) repeat playlist - use with play"
-echo "  -n) notifications - use with play"
+echo "  -e) use equalizer - use with play"
+echo "  -n) use notifications - use with play"
 echo ""
 echo "  notify - turn on notifications"
 echo "  notify off - turn off notifications"
+echo ""
+echo "  eq - turn on equalizer"
+echo "  eq off - turn off equalizer"
 echo ""
 }
 
@@ -82,48 +85,48 @@ type -P ffmpeg 1>/dev/null
 if [[ ! -d $music ]]; then echo $music does not exist, edit your music directory in the MPS script. && exit; fi
 
 function ls {
-find $music -maxdepth 1 -type f \( -name "*.mp3" -o -name "*.aac" \)  -exec basename {} \;| sort
+find $music -maxdepth 1 -type f -exec basename {} \;| sort
 }
 
 function title {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%t' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done | sort
+done
 }
 
 function album {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%l' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done | sort
+done
 }
 
 function artist {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%a' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done | sort
+done
 }
 
 function genre {
 for file in $music/*.mp3
 do
 [[ $(mp3info -p '%g' "$file") == "$@"* ]] && echo $file | awk -F "/" '{print $NF}'
-done | sort
+done
 }
 
 function year {
 string="$1"
 IFS='-' read -ra split <<< "$string"
-for file in $music/*.mp3
+for file in $music/*mp3
 do
 year=$(mp3info -p '%y\n' "$file")
 [[ ! "${split[1]}" ]] && [[ $year -eq $1 ]] &&
 printf "$file" | awk -F "/" '{print $NF}'
 [[ $year -ge "${split[0]}" ]] && [[ $year -le ${split[1]} ]] &&        
 printf "$file" | awk -F "/" '{print $NF}' || [[ $year -eq "1" ]]
-done | sort
+done
 }
 
 function playing {
@@ -201,7 +204,7 @@ fi
 function trackinfo {
 if pgrep -x mplayer > /dev/null
 then
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
 count=$(cat -n /tmp/playlist | grep "$song" | awk '{print $1}')
 number=$(cat /tmp/playlist | wc -l | awk '{print $1}')
 printf "Track $count/$number - $(mp3info -p '%a - %t (%m:%02s)' "$song")\n"
@@ -215,15 +218,15 @@ echo get_time_pos > /tmp/fifo
 echo get_percent_pos > /tmp/fifo
 sleep 0.3
 position=$(cat /tmp/log | grep TIME | sed 's/ANS_TIME_POSITION=//g' | sed 's/\..*//' | tail -n 1)
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1'| tail -n 1) 
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
 sec=$(mp3info -p "%S" "$song")
 remain=$((sec-position))
 duration=$(mp3info -p '%m:%02s' "$song")
 percent=$(tail /tmp/log | grep PERCENT | sed 's/ANS_PERCENT_POSITION=//g' | tail -n 1)
 random=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-shuffle'; then printf " Random: on"; else printf " Random: off"; fi)
-repeat=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off"; fi)
-notify=$(ps -x | grep tail | grep -v grep | if grep -q "tail -n 25 -f /tmp/log"; then printf " Notify: on"; else printf " Notify: off\n"; fi)
-printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat $notify\n" $((remain / 60 % 60)) $((remain % 60))
+repeat=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off\n"; fi)
+eq=$(cat ~/.mps/.eq_state | grep  -q "1" && printf " Equalizer: on" || printf " Equalizer off\n")
+printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat $eq\n" $((remain / 60 % 60)) $((remain % 60))
 }
 
 function playtime  {
@@ -276,28 +279,26 @@ echo mps already stopped && exit
 
 function notify {
 if [[ $1 == "off" ]]
-then pid=$(ps -x | grep tail | grep -v grep | grep "tail -n 25 -f /tmp/log" | awk '{print $1}')
-kill $pid 2>/dev/null
+then
+pid2=$(ps -x | grep tail | grep -v grep | grep "tail -n 25 -f /tmp/log" | awk '{print $1}')
+kill $pid2 2>/dev/null && exit
 else
-ps -x | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then echo notify already enabled && exit
+ps -A | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then echo notify already enabled && exit
 elif pgrep -x mplayer >/dev/null; then
 (tail -n 25 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
 do
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'|sed 's/.$//1' | tail -n 1) 
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
 ffmpeg -y -i "$song" /tmp/album.jpg &
 wait
 notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
 done > /dev/null 2>&1 &)
-ps -x | grep sleep | grep -v grep | if ! grep -q '1'
-then
 kill_tail &
-fi
 fi
 fi
 }
 
 function albuminfo {
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1)
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1)
 printf "$(mp3info -p '%a - %l (%y)\n' "$song")\n"
 }
 
@@ -314,16 +315,57 @@ fi
 done
 }
 
+function eq {
+[[ ! -e ~/.mps/.eq_state ]] && touch ~/.mps/.eq_state
+echo "af_del equalizer" > /tmp/fifo
+echo "af_add equalizer=$eq_settings" > /tmp/fifo
+echo "1" > ~/.mps/.eq_state
+if [[ $1 == "off" ]]; then
+echo "af_del equalizer" > /tmp/fifo
+echo "0" > ~/.mps/.eq_state
+pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
+kill $pid6 2>/dev/null
+fi
+(tail -n 24 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
+do
+echo "af_del equalizer" > /tmp/fifo
+echo "af_add equalizer=$eq_settings" > /tmp/fifo
+echo "1" > ~/.mps/.eq_state
+if [[ $1 == "off" ]]; then
+echo "af_del equalizer" > /tmp/fifo
+echo "0" > ~/.mps/.eq_state
+pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
+kill $pid6 2>/dev/null
+fi
+done > /dev/null 2>&1 &)
+kill_eq &
+}
+
+function kill_eq {
+while true; do
+if pgrep -x mplayer >/dev/null
+then
+sleep 1
+else
+pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
+kill $pid6 2>/dev/null
+break
+fi
+done
+}
+
 function play {
+[[ ! -e ~/.mps/.eq_state ]] && touch ~/.mps/.eq_state
+echo "0" > ~/.mps/.eq_state
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 [[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
 [[ -e /tmp/log ]] && rm /tmp/log
-[[ $test ]] && echo mplayer already running && exit
-[[ "$@" =~ [a-mo-qt-z0-9] ]] && echo valid flags are \(s\) shuffle \(r\) repeat and \(n\) notify && exit
-[[ "$@" =~ 'r' ]] && repeat="-loop 0"
+[[ "$@" =~ 'r' ]] && repeat="-loop 0"m
 [[ "$@" =~ 's' ]] && shuffle="-shuffle"
-( mplayer $shuffle $repeat -slave -input file=/tmp/fifo -playlist /tmp/playlist -af equalizer="$eq_settings" > /tmp/log 2>&1 &)
-[[ "$@" =~ 'n' ]] && notify
+[[ "$@" =~ 'e' ]] && eq &
+(mplayer $shuffle $repeat $eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
+[[ "$@" =~ 'n' ]] &&
+notify
 }
 
 get_args $@
