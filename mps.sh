@@ -16,8 +16,8 @@
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
 music=~/Music
-playlists=/home/user/.mps
-eq_settings="4:8:2:1:1:0:1:2:5:8"
+playlists=/home/marc/.mps
+eq_settings="9:7:2:1:1:0:1:2:5:8"
 
 function usage {
 echo ""
@@ -204,7 +204,7 @@ fi
 function trackinfo {
 if pgrep -x mplayer > /dev/null
 then
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
 count=$(cat -n /tmp/playlist | grep "$song" | awk '{print $1}')
 number=$(cat /tmp/playlist | wc -l | awk '{print $1}')
 printf "Track $count/$number - $(mp3info -p '%a - %t (%m:%02s)' "$song")\n"
@@ -218,7 +218,7 @@ echo get_time_pos > /tmp/fifo
 echo get_percent_pos > /tmp/fifo
 sleep 0.3
 position=$(cat /tmp/log | grep TIME | sed 's/ANS_TIME_POSITION=//g' | sed 's/\..*//' | tail -n 1)
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
 sec=$(mp3info -p "%S" "$song")
 remain=$((sec-position))
 duration=$(mp3info -p '%m:%02s' "$song")
@@ -287,7 +287,7 @@ ps -A | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then ech
 elif pgrep -x mplayer >/dev/null; then
 (tail -n 25 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
 do
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1) 
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
 ffmpeg -y -i "$song" /tmp/album.jpg &
 wait
 notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
@@ -298,7 +298,7 @@ fi
 }
 
 function albuminfo {
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| cut -d . -f 1,2 | tail -n 1)
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
 printf "$(mp3info -p '%a - %l (%y)\n' "$song")\n"
 }
 
