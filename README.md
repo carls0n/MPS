@@ -18,3 +18,6 @@
 * New! Added an -n flag to start notifications at runtime.
 * New! Added an -e flag to enable equalizer at runtime.
 * New! Turn on/off equalizer on the fly.
+
+* New! [ January 17, 2025 ] Consume mode is now default. Tracks will be removed from the playlist as they are played.
+Also, showlist now shows remaining tracks left in playlist. Playtime now shows remaining tracks and remaining time left in playlist
