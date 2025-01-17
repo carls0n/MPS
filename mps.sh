@@ -168,7 +168,7 @@ echo previous option has been disabled in this version && exit
 }
 
 function repeat {
-echo loop 2 > /tmp/fifo
+echo repeat song has been disabled in this version && exit
 }
 
 function pause {
