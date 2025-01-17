@@ -168,7 +168,9 @@ echo previous option has been disabled in this version && exit
 }
 
 function repeat {
-echo repeat song has been disabled in this version && exit
+echo loop 2 > /tmp/fifo
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
+echo 'loadfile "$song"' 2 > /tmp/fifo
 }
 
 function pause {
