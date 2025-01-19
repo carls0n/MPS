@@ -62,6 +62,9 @@ echo ""
 echo "  notify - turn on notifications"
 echo "  notify off - turn off notifications"
 echo ""
+echo "  eq - turn on equalizer"
+echo "  eq off - turn off equalizer"
+echo ""
 }
 
 function get_args {
@@ -248,12 +251,7 @@ song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.
 length=$(mp3info -p '%S' "$song")
 duration=$((duration+length))
 time=$((duration-position))
-if [[ $number == "1" ]]
-then
-printf "$number track remaining - Time remaining: %02d:%02d:%02d\n" $((time / 3600)) $((time / 60 % 60)) $((time % 60))
-else
 printf "$number tracks remaining - Time remaining: %02d:%02d:%02d\n" $((time / 3600)) $((time / 60 % 60)) $((time % 60))
-fi
 fi
 }
 
@@ -286,7 +284,7 @@ printf "No such playlist\n"
 }
 
 function delete {
-[[ $test ]] && echo cannot delete tracks during playback && exit
+#[[ $test ]] && echo cannot delete tracks during playback && exit
 sed -i "$1"'d' /tmp/playlist && exit
 }
 
@@ -333,6 +331,47 @@ fi
 done
 }
 
+function eq {
+[[ ! -e ~/.mps/.eq_state ]] && touch ~/.mps/.eq_state
+echo "af_del equalizer" > /tmp/fifo
+echo "af_add equalizer=$eq_settings" > /tmp/fifo
+echo "1" > ~/.mps/.eq_state
+if [[ $1 == "off" ]]
+then
+echo "af_del equalizer" > /tmp/fifo
+echo "0" > ~/.mps/.eq_state
+pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
+kill $pid6 2>/dev/null
+fi
+(tail -n 24 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
+do
+echo "af_del equalizer" > /tmp/fifo
+echo "af_add equalizer=$eq_settings" > /tmp/fifo
+echo "1" > ~/.mps/.eq_state
+if [[ $1 == "off" ]]
+then
+echo "af_del equalizer" > /tmp/fifo
+echo "0" > ~/.mps/.eq_state
+pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
+kill $pid6 2>/dev/null
+fi
+done > /dev/null 2>&1 &)
+kill_eq &
+}
+
+function kill_eq {
+while true; do
+if pgrep -x mplayer >/dev/null
+then
+sleep 1
+else
+pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
+kill $pid6 2>/dev/null
+break
+fi
+done
+}
+
 function kill_consume {
 while true; do
 if pgrep -x mplayer >/dev/null
@@ -372,8 +411,8 @@ echo "0" > ~/.mps/.eq_state
 [[ -e /tmp/log ]] && rm /tmp/log
 [[ "$@" =~ 'r' ]] && repeat="-loop 0"
 [[ "$@" =~ 's' ]] && shuffle="-shuffle"
-[[ "$@" =~ 'e' ]] && eq="$eq_settings" && echo "1" > ~/.mps/.eq_state
-(mplayer $shuffle $repeat -af equalizer=$eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
+[[ "$@" =~ 'e' ]] && eq &
+(mplayer $shuffle $repeat $eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
 [[ "$@" =~ 'n' ]] &&
 notify
 consume &
