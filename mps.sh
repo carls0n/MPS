@@ -6,11 +6,11 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
+
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
@@ -249,7 +249,12 @@ song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.
 length=$(mp3info -p '%S' "$song")
 duration=$((duration+length))
 time=$((duration-position))
+if [[ $number == "1" ]]
+then
+printf "$number track remaining - Time remaining: %02d:%02d:%02d\n" $((time / 3600)) $((time / 60 % 60)) $((time % 60))
+else
 printf "$number tracks remaining - Time remaining: %02d:%02d:%02d\n" $((time / 3600)) $((time / 60 % 60)) $((time % 60))
+fi
 fi
 }
 
@@ -282,7 +287,7 @@ printf "No such playlist\n"
 }
 
 function delete {
-#[[ $test ]] && echo cannot delete tracks during playback && exit
+[[ $test ]] && echo cannot delete tracks during playback && exit
 sed -i "$1"'d' /tmp/playlist && exit
 }
 
@@ -389,7 +394,7 @@ cp /tmp/playlist /tmp/playlist.tmp
 do
 song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1)
 sed -i "\#$song#d" /tmp/playlist
-ps -x | grep mplayer | grep -v grep | if grep -q 'mplayer -loop 0 -slave -idle -input file=/tmp/fifo -playlist /tmp/playlist'; then
+ps -x | grep mplayer | grep -v grep | if grep -q 'mplayer -loop 0 -slave -input file=/tmp/fifo -playlist /tmp/playlist'; then
 if [[ $(cat /tmp/playlist | wc -l) == "0" ]] 
 then
 echo "loadlist /tmp/playlist.tmp 2" > /tmp/fifo
@@ -410,7 +415,7 @@ echo "0" > ~/.mps/.eq_state
 [[ "$@" =~ 'r' ]] && repeat="-loop 0"
 [[ "$@" =~ 's' ]] && shuffle="-shuffle"
 [[ "$@" =~ 'e' ]] && eq &
-(mplayer $shuffle $repeat $eq -slave -idle -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
+(mplayer $shuffle $repeat $eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
 [[ "$@" =~ 'n' ]] &&
 notify
 consume &
