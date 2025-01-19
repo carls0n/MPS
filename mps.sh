@@ -17,7 +17,7 @@
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
 music=~/Music
-playlists=/home/user/.mps
+playlists=/home/marc/.mps
 eq_settings="8:7:4:1:1:0:1:2:5:5"
 
 function usage {
