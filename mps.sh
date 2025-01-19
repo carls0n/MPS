@@ -328,47 +328,6 @@ fi
 done
 }
 
-function eq {
-[[ ! -e ~/.mps/.eq_state ]] && touch ~/.mps/.eq_state
-echo "af_del equalizer" > /tmp/fifo
-echo "af_add equalizer=$eq_settings" > /tmp/fifo
-echo "1" > ~/.mps/.eq_state
-if [[ $1 == "off" ]]
-then
-echo "af_del equalizer" > /tmp/fifo
-echo "0" > ~/.mps/.eq_state
-pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
-kill $pid6 2>/dev/null
-fi
-(tail -n 24 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
-do
-echo "af_del equalizer" > /tmp/fifo
-echo "af_add equalizer=$eq_settings" > /tmp/fifo
-echo "1" > ~/.mps/.eq_state
-if [[ $1 == "off" ]]
-then
-echo "af_del equalizer" > /tmp/fifo
-echo "0" > ~/.mps/.eq_state
-pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
-kill $pid6 2>/dev/null
-fi
-done > /dev/null 2>&1 &)
-kill_eq &
-}
-
-function kill_eq {
-while true; do
-if pgrep -x mplayer >/dev/null
-then
-sleep 1
-else
-pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
-kill $pid6 2>/dev/null
-break
-fi
-done
-}
-
 function kill_consume {
 while true; do
 if pgrep -x mplayer >/dev/null
@@ -408,8 +367,8 @@ echo "0" > ~/.mps/.eq_state
 [[ -e /tmp/log ]] && rm /tmp/log
 [[ "$@" =~ 'r' ]] && repeat="-loop 0"
 [[ "$@" =~ 's' ]] && shuffle="-shuffle"
-[[ "$@" =~ 'e' ]] && eq &
-(mplayer $shuffle $repeat $eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
+[[ "$@" =~ 'e' ]] && eq="$eq_settings"
+(mplayer $shuffle $repeat af-equalizer=$eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
 [[ "$@" =~ 'n' ]] &&
 notify
 consume &
