@@ -367,8 +367,8 @@ echo "0" > ~/.mps/.eq_state
 [[ -e /tmp/log ]] && rm /tmp/log
 [[ "$@" =~ 'r' ]] && repeat="-loop 0"
 [[ "$@" =~ 's' ]] && shuffle="-shuffle"
-[[ "$@" =~ 'e' ]] && eq="$eq_settings"
-(mplayer $shuffle $repeat af-equalizer=$eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
+[[ "$@" =~ 'e' ]] && eq="$eq_settings" && echo "1" > ps$playlists/.eq_state
+(mplayer $shuffle $repeat -af equalizer=$eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
 [[ "$@" =~ 'n' ]] &&
 notify
 consume &
