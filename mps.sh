@@ -347,7 +347,7 @@ cp /tmp/playlist /tmp/playlist.tmp
 do
 song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1)
 sed -i "\#$song#d" /tmp/playlist
-ps -x | grep mplayer | grep -v grep | if grep -q 'mplayer -loop 0 -slave -input file=/tmp/fifo -playlist /tmp/playlist'; then
+ps -x | grep mplayer | grep -v grep | if grep -qemp "-loop 0"; then
 if [[ $(cat /tmp/playlist | wc -l) == "0" ]] 
 then
 echo "loadlist /tmp/playlist.tmp 2" > /tmp/fifo
