@@ -224,7 +224,7 @@ duration=$(mp3info -p '%m:%02s' "$song")
 percent=$(tail /tmp/log | grep PERCENT | sed 's/ANS_PERCENT_POSITION=//g' | tail -n 1)
 random=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-shuffle'; then printf " Random: on"; else printf " Random: off"; fi)
 repeat=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off\n"; fi)
-eq=$(cat ~/.mps/.eq_state | grep  -q "1" && printf " Equalizer: on" || printf " Equalizer off\n")
+eq=$(ps -x | grep -v grep | grep mplayer | grep -qe "$eq_settings" && printf " Equalizer: on" || printf " Equalizer off\n")
 printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat $eq\n" $((remain / 60 % 60)) $((remain % 60))
 }
 
@@ -271,7 +271,7 @@ echo "Playlist loaded -> $1"
 }
 
 function lsplaylists {
-[[ -d $playlists ]] && find $playlists -type f  ! -name ".eq_state" -exec basename {} \;  && exit
+[[ -d $playlists ]] && find $playlists -type f -exec basename {} \;  && exit
 printf "no playlists found\n"
 }
 
@@ -281,7 +281,7 @@ printf "No such playlist\n"
 }
 
 function delete {
-#[[ $test ]] && echo cannot delete tracks during playback && exit
+[[ $test ]] && echo cannot delete tracks during playback && exit
 sed -i "$1"'d' /tmp/playlist && exit
 }
 
@@ -360,15 +360,12 @@ kill_consume &
 
 function play {
 [[ $test ]] && echo mplayer already running && exit
-[[ ! -d $playlists ]] && mkdir $playlists
-[[ ! -e $playlists/.eq_state ]] && touch $playlists/.eq_state
-echo "0" > $playlists/.eq_state
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 [[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
 [[ -e /tmp/log ]] && rm /tmp/log
 [[ "$@" =~ 'r' ]] && repeat="-loop 0"
 [[ "$@" =~ 's' ]] && shuffle="-shuffle"
-[[ "$@" =~ 'e' ]] && eq="$eq_settings" && echo "1" > $playlists/.eq_state
+[[ "$@" =~ 'e' ]] && eq="$eq_settings"
 (mplayer $shuffle $repeat -af equalizer=$eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
 [[ "$@" =~ 'n' ]] &&
 notify
