@@ -62,9 +62,6 @@ echo ""
 echo "  notify - turn on notifications"
 echo "  notify off - turn off notifications"
 echo ""
-echo "  eq - turn on equalizer"
-echo "  eq off - turn off equalizer"
-echo ""
 }
 
 function get_args {
