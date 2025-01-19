@@ -271,7 +271,7 @@ echo "Playlist loaded -> $1"
 }
 
 function lsplaylists {
-[[ -d $playlists ]] && find $playlists -type f -exec basename {} \; && exit
+[[ -d $playlists ]] && find $playlists -type f  ! -name ".eq_state" -exec basename {} \;  && exit
 printf "no playlists found\n"
 }
 
@@ -360,14 +360,15 @@ kill_consume &
 
 function play {
 [[ $test ]] && echo mplayer already running && exit
-[[ ! -e ~/.mps/.eq_state ]] && touch ~/.mps/.eq_state
-echo "0" > ~/.mps/.eq_state
+[[ ! -d $playlists ]] && mkdir $playlists
+[[ ! -e $playlists/.eq_state ]] && touch $playlists/.eq_state
+echo "0" > $playlists/.eq_state
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 [[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
 [[ -e /tmp/log ]] && rm /tmp/log
 [[ "$@" =~ 'r' ]] && repeat="-loop 0"
 [[ "$@" =~ 's' ]] && shuffle="-shuffle"
-[[ "$@" =~ 'e' ]] && eq="$eq_settings" && echo "1" > ~/.mps/.eq_state
+[[ "$@" =~ 'e' ]] && eq="$eq_settings" && echo "1" > $playlists/.eq_state
 (mplayer $shuffle $repeat -af equalizer=$eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
 [[ "$@" =~ 'n' ]] &&
 notify
@@ -376,4 +377,3 @@ consume &
 
 get_args $@
 $@
-
