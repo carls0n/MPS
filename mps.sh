@@ -12,12 +12,11 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
 music=~/Music
-playlists=/home/user/.mps
+playlists=/home/marc/.mps
 eq_settings="8:7:4:1:1:0:1:2:5:5"
 
 function usage {
@@ -48,6 +47,7 @@ echo "  status - show time remaining and percent finished"
 echo "  playtime - show remaining tracks and time of playlist"
 echo "  delete <track number> - delete track"
 echo "  clear - clear playlist"
+echo "  queued - show next track in queue"
 echo ""
 echo "  save <playlist> - save playlist"
 echo "  load <playlist> - load playlist"
@@ -74,12 +74,16 @@ done
 }
 
 shopt -s nocasematch
+touch $playlists/.state
 
 type -P mp3info 1>/dev/null
 [ "$?" -ne 0 ] && echo "Please install mp3info before using this script." && exit
 type -P mplayer 1>/dev/null
 [ "$?" -ne 0 ] && echo "Please install mplayer before using this script." && exit
 type -P ffmpeg 1>/dev/null
+[ "$?" -ne 0 ] && echo "Please install ffmpeg before using this script." && exit
+type -P shuf 1>/dev/null
+[ "$?" -ne 0 ] && echo "Please install shuf before using this script." && exit
 if [[ ! -d $music ]]; then echo $music does not exist, edit your music directory in the MPS script. && exit
 fi
 
@@ -148,7 +152,7 @@ printf "Cannot add tracks in shuffle mode\n" && exit
 }
 
 test=$(pgrep mplayer)
-random=$(ps -A | grep mplayer | grep -v grep | grep shuffle)
+random=$(cat $playlists/.state | grep 1)
 
 function add {
 [[ -e /tmp/new ]] && rm /tmp/new
@@ -181,7 +185,9 @@ echo "mute" > /tmp/fifo
 function clear {
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 [[ $test ]] && pkill mplayer
-rm /tmp/playlist && exit
+rm /tmp/playlist
+[[ -f /tmp/2 ]] && rm /tmp/2
+echo "0" > $playlists/.state
 }
 
 function showlist {
@@ -222,25 +228,39 @@ sec=$(mp3info -p "%S" "$song")
 remain=$((sec-position))
 duration=$(mp3info -p '%m:%02s' "$song")
 percent=$(tail /tmp/log | grep PERCENT | sed 's/ANS_PERCENT_POSITION=//g' | tail -n 1)
-random=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-shuffle'; then printf " Random: on"; else printf " Random: off"; fi)
 repeat=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off\n"; fi)
 eq=$(ps -x | grep -v grep | grep mplayer | grep -qe "$eq_settings" && printf " Equalizer: on" || printf " Equalizer off\n")
+random=$(if [[ $(cat $playlists/.state) == "1" ]]; then printf " Random: on"; else printf "Random: off\n"; fi)
 printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat $eq\n" $((remain / 60 % 60)) $((remain % 60))
 }
 
 function playtime {
+[[ -f $playlists/.state ]] &&
+[[ $(cat $playlists/.state) == "1" ]] && playlist="/tmp/2" || playlist="/tmp/playlist"
 [[ ! -f /tmp/playlist ]] && printf "No songs in playlist\n" && exit
-while read song
+number=$(cat $playlist | wc -l | awk '{print $1}')
+[[ $test ]] &&
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
+if [[ ! $test ]]
+then
+while read line
 do
-length=$(mp3info -p '%S' "$song")
+length=$(mp3info -p '%S' "$line")
 duration=$((duration+length))
-done< /tmp/playlist
-number=$(cat /tmp/playlist | wc -l | awk '{print $1}')
-if [[  ! $test ]]
+done< $playlist
+else
+while read -r line
+do
+length=$(mp3info -p '%S' "$line")
+duration=$((duration+length))
+done< <(grep -A $(($number-1)) "$song" $playlist)
+fi
+if [[ ! $test ]]
 then
-printf "$number tracks total - Total playtime: %02d:%02d:%02d\n" $((duration / 3600)) $((duration / 60 % 60)) $((duration % 60)) && exit
-elif [[ $test ]]
-then
+[[ $number == "1" ]] && num="track" || num="tracks"
+printf "$number $num total - Total playtime: %02d:%02d:%02d\n" $((duration / 3600)) $((duration / 60 % 60)) $((duration % 60)) && exit
+fi
+[[ $test ]] &&
 echo get_time_pos > /tmp/fifo
 sleep 0.3
 position=$(cat /tmp/log | grep TIME | sed 's/ANS_TIME_POSITION=//g' | sed 's/\..*//' | tail -n 1)
@@ -248,15 +268,24 @@ song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.
 length=$(mp3info -p '%S' "$song")
 duration=$((duration+length))
 time=$((duration-position))
-printf "$number tracks remaining - Time remaining: %02d:%02d:%02d\n" $((time / 3600)) $((time / 60 % 60)) $((time % 60))
+remain=$((duration-length-position))
+if [[ $number == "1" ]] && num="track" || num="tracks"
+then
+printf "$number $num total - Time remaining: %02d:%02d:%02d\n" $((remain / 3600)) $((remain / 60 % 60)) $((remain % 60))
 fi
 }
 
 function save {
-[[ ! -d $playlists ]] && mkdir $playlists
+if [[ $(cat $playlists/.state) == "1" ]]
+then
+playlist="/tmp/2"
+else 
+playlist="/tmp/playlist"
+fi
+[[ ! -d $playlists ]] && mkdir -p $playlists
 [[ $1 ]] && [[ ! -f $playlists/$1 ]] &&
-cp /tmp/playlist $playlists/$1 && exit
-printf "Playlist already exists\n"
+cp $playlist $playlists/$1 && exit
+printf "Playlist already exists\n" && exit
 }
 
 function load {
@@ -271,7 +300,7 @@ echo "Playlist loaded -> $1"
 }
 
 function lsplaylists {
-[[ -d $playlists ]] && find $playlists -type f -exec basename {} \;  && exit
+[[ -d $playlists ]] && find $playlists -type f  ! -name ".*"  -exec basename {} \;  && exit
 printf "no playlists found\n"
 }
 
@@ -281,11 +310,18 @@ printf "No such playlist\n"
 }
 
 function delete {
+if [[ $(cat $playlists/.state) == "1" ]]
+then
+playlist="/tmp/2"
+else 
+playlist="/tmp/playlist"
+fi
 [[ $test ]] && echo cannot delete tracks during playback && exit
 sed -i "$1"'d' /tmp/playlist && exit
 }
 
 function stop {
+echo "0" > $playlists/.state
 [[ $test ]] && pkill mplayer && exit
 echo mps already stopped && exit
 }
@@ -328,48 +364,43 @@ fi
 done
 }
 
-function kill_consume {
-while true; do
-if pgrep -x mplayer >/dev/null
+function queued {
+[[ ! $test ]] && echo start playback of playlist to see the next song in the queue && exit
+if [[ $(cat $playlists/.state) == "0" ]]
 then
-sleep 1
+playlist="/tmp/playlist"
 else
-pid5=$(ps -x | grep tail | grep -v grep | grep 'tail -n 26 -f /tmp/log' | awk '{print $1}')
-kill $pid5 2>/dev/null
-break
+playlist="/tmp/2"
 fi
-done
+song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
+while read second_line;
+do
+if [[ "$second_line" == "$song" ]]
+then
+if read -r song
+then
+printf "$(mp3info -p '%a - %t' "$song")\n" 
+fi
+fi
+done< $playlist
 }
 
-function consume { 
-cp /tmp/playlist /tmp/playlist.tmp
-(tail -n 26 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
-do
-song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1)
-sed -i "\#$song#d" /tmp/playlist
-ps -x | grep mplayer | grep -v grep | if grep -qe "-loop 0"; then
-if [[ $(cat /tmp/playlist | wc -l) == "0" ]] 
-then
-echo "loadlist /tmp/playlist.tmp 2" > /tmp/fifo
-cp /tmp/playlist.tmp /tmp/playlist
-fi
-fi
-done > /dev/null 2>&1 &)
-kill_consume &
+function shuffle {
+shuf /tmp/playlist > /tmp/2
 }
 
 function play {
+echo 0 > $playlists/.state
 [[ $test ]] && echo mplayer already running && exit
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 [[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
 [[ -e /tmp/log ]] && rm /tmp/log
 [[ "$@" =~ 'r' ]] && repeat="-loop 0"
-[[ "$@" =~ 's' ]] && shuffle="-shuffle"
 [[ "$@" =~ 'e' ]] && eq="$eq_settings"
-(mplayer $shuffle $repeat -af equalizer=$eq -slave -input file=/tmp/fifo -playlist /tmp/playlist > /tmp/log 2>&1 &)
-[[ "$@" =~ 'n' ]] &&
-notify
-consume &
+[[ "$@" =~ 's' ]] && (shuffle &) && echo "1" > $playlists/.state
+[[ "$@" =~ 's' ]] && playlist=/tmp/2 || playlist=/tmp/playlist &&
+(mplayer $repeat -af equalizer=$eq -slave -input file=/tmp/fifo -playlist $playlist > /tmp/log 2>&1 &)
+[[ "$@" =~ 'n' ]] && notify &
 }
 
 get_args $@
