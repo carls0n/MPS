@@ -15,8 +15,6 @@
 * Enable notifications (xfce-notify-4.0)
 * Albuminfo command to get album info and year<br>
 * Showlist function includes -n flag to number lines. Handy for using delete.
-* New! Added an -n flag to start notifications at runtime.
-* New! Added an -e flag to enable equalizer at runtime
 * New! queued command to see next song
 #
 * New! [ January 17, 2025 ] Consume mode is now default. Tracks will be removed from the playlist as they are played.
