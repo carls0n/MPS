@@ -50,6 +50,7 @@ echo "  clear - clear playlist"
 echo "  queued - show next track in queue"
 echo ""
 echo "  save <playlist> - save playlist"
+echo "  update <playlist> - update playlist"
 echo "  load <playlist> - load playlist"
 echo "  remove <playlist> - remove playlist"
 echo "  lsplaylists - show playlists"
@@ -285,7 +286,12 @@ fi
 [[ ! -d $playlists ]] && mkdir -p $playlists
 [[ $1 ]] && [[ ! -f $playlists/$1 ]] &&
 cp $playlist $playlists/$1 && exit
-printf "Playlist already exists\n" && exit
+printf "Playlist already exists - Use mps update\n" && exit
+}
+
+function update {
+[[ -f $playlists/$1 ]] && cp /tmp/playlist $playlists/$1 && exit
+echo "Playlist doesn't exist. Use mps save"
 }
 
 function load {
