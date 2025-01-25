@@ -15,5 +15,6 @@
 * Enable notifications (xfce-notify-4.0)
 * Albuminfo command to get album info and year<br>
 * Showlist function includes -n flag to number lines. Handy for using delete.
-* New! queued command to see next song
+* Queued command to see the next song in the queue.
+* Requires mplayer, mp3info, ffmpeg and shuf be installed.
 #
