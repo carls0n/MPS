@@ -10,7 +10,7 @@
 * Trackinfo feature to get information about currently playing track<br>
 * Status feature to get time remaining and percent finished<br>
 * Status feature also has repeat, random and eq status indicators.<br>
-* Show number of tracks and total playlist duration<br>
+* Shows remaining number of tracks and remaining playlist time.<br>
 * Ability to delete tracks in playlist<br>
 * Enable notifications (xfce-notify-4.0)
 * Albuminfo command to get album info and year<br>
