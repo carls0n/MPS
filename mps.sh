@@ -75,7 +75,6 @@ done
 }
 
 shopt -s nocasematch
-touch $playlists/.state
 
 type -P mp3info 1>/dev/null
 [ "$?" -ne 0 ] && echo "Please install mp3info before using this script." && exit
@@ -153,6 +152,7 @@ printf "Cannot add tracks in shuffle mode\n" && exit
 }
 
 test=$(pgrep mplayer)
+[[ -f $playlists/.state ]] &&
 random=$(cat $playlists/.state | grep 1)
 
 function add {
@@ -166,7 +166,8 @@ echo "pausing_keep_force pt_step 1" > /tmp/fifo
 }
 
 function previous {
-echo previous option has been disabled in this version && exit
+#echo "pausing_keep_force pt_step -1" > /tmp/fifo
+echo previous function removed from this version && exit
 }
 
 function repeat {
@@ -192,7 +193,7 @@ echo "0" > $playlists/.state
 }
 
 function showlist {
-[[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
+[[ ! -f /tmp/playlist ]] && echo No songs in playlist && exitmps play -en
 if [[ ! $1 ]]
 then
 while read line
@@ -270,9 +271,11 @@ length=$(mp3info -p '%S' "$song")
 duration=$((duration+length))
 time=$((duration-position))
 remain=$((duration-length-position))
-if [[ $number == "1" ]] && num="track" || num="tracks"
+count=$(cat $playlists/.count)
+left=$((number-count))
+if [[ $left == "1" ]] && num="track" || num="tracks"
 then
-printf "$number $num total - Time remaining: %02d:%02d:%02d\n" $((remain / 3600)) $((remain / 60 % 60)) $((remain % 60))
+printf "$left $num remaining - Time remaining: %02d:%02d:%02d\n" $((remain / 3600)) $((remain / 60 % 60)) $((remain % 60))
 fi
 }
 
@@ -290,6 +293,7 @@ printf "Playlist already exists - Use mps update\n" && exit
 }
 
 function update {
+[[ -z $1 ]] && echo Enter playlist name - mps update playlist && exit
 [[ -f $playlists/$1 ]] && cp /tmp/playlist $playlists/$1 && exit
 echo "Playlist doesn't exist. Use mps save"
 }
@@ -327,6 +331,7 @@ sed -i "$1"'d' /tmp/playlist && exit
 }
 
 function stop {
+[[ -f $playlists/.state ]] &&
 echo "0" > $playlists/.state
 [[ $test ]] && pkill mplayer && exit
 echo mps already stopped && exit
@@ -352,6 +357,16 @@ fi
 fi
 }
 
+function counting {
+[[ ! -d $playlists ]] && mkdir -p $playlists
+(tail -n 26 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
+do
+((count++))
+echo $count > $playlists/.count
+done > /dev/null 2>&1 &)
+kill_counting &
+}
+
 function albuminfo {
 song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
 printf "$(mp3info -p '%a - %l (%y)\n' "$song")\n"
@@ -364,6 +379,19 @@ then
 sleep 1
 else
 pid=$(ps -x | grep tail | grep -v grep | grep "tail -n 25 -f /tmp/log" | awk '{print $1}')
+kill $pid 2>/dev/null
+break
+fi
+done
+}
+
+function kill_counting {
+while true; do
+if pgrep -x mplayer >/dev/null
+then
+sleep 1
+else
+pid=$(ps -x | grep tail | grep -v grep | grep "tail -n 26 -f /tmp/log" | awk '{print $1}')
 kill $pid 2>/dev/null
 break
 fi
@@ -396,6 +424,7 @@ shuf /tmp/playlist > /tmp/2
 }
 
 function play {
+[[ ! -f $playlists/.state ]] && mkdir -p $playlists
 echo 0 > $playlists/.state
 [[ $test ]] && echo mplayer already running && exit
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
@@ -407,6 +436,7 @@ echo 0 > $playlists/.state
 [[ "$@" =~ 's' ]] && playlist=/tmp/2 || playlist=/tmp/playlist &&
 (mplayer $repeat -af equalizer=$eq -slave -input file=/tmp/fifo -playlist $playlist > /tmp/log 2>&1 &)
 [[ "$@" =~ 'n' ]] && notify &
+counting &
 }
 
 get_args $@
