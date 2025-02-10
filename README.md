@@ -18,3 +18,4 @@
 * Queued command to see the next song in the queue.
 * Requires mplayer, mp3info, ffmpeg and shuf be installed.
 #
+![MPS](https://github.com/carls0n/MPS/blob/main/vid.png)
