@@ -17,6 +17,6 @@
 * Showlist function includes -n flag to number lines. Handy for using delete.
 * Queued command to see the next song in the queue.
 * Requires mplayer, mp3info, ffmpeg and shuf be installed
-#
+
 https://github.com/user-attachments/assets/5ecc18dd-f609-424d-9543-a7b1ed1365ef
 
