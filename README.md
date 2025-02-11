@@ -1,4 +1,4 @@
-* Makes use of Mplayers builtin equalizer. Customizable.
+* Customizable equalizer<br>
 * Search for tracks by title, genre, album, artist or range of years<br>
 * Also supports ls and add features to add tracks to playlists<br>
 * Ability to save, update and load playlists<br>
