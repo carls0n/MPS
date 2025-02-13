@@ -13,5 +13,5 @@
 * Queued command to see the next song in the queue.
 * Requires mplayer, mp3info, ffmpeg and shuf be installed
 
-https://github.com/user-attachments/assets/3333fab5-6d09-446a-81d9-a89989f8f236
+https://github.com/user-attachments/assets/6bd0fd32-4ed9-40f8-a2e3-01883b897f3d
 
