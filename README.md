@@ -13,5 +13,9 @@
 * Queued command to see the next song in the queue.
 * Requires mplayer, mp3info, ffmpeg and shuf be installed
 
+* Update: You can now jump forward by x number of seconds or rewind x number of seconds on any song.
+The equalizer can now be turned on or off during playback.
+When updating a playlist after adding songs, you can now use 'mps update sort [ playlist ]' to sort songs alphabetically.
+
 https://github.com/user-attachments/assets/6bd0fd32-4ed9-40f8-a2e3-01883b897f3d
 
