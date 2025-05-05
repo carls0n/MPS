@@ -17,5 +17,7 @@
 The equalizer can now be turned on or off during playback.
 When updating a playlist after adding songs, you can now use 'mps update sort [ playlist ]' to sort songs alphabetically.
 
+* OpenBSD users can install coreutils from the OpenBSD repository and then cp /usr/local/bin/gshuf /usr/local/bin/shuf
+
 https://github.com/user-attachments/assets/6bd0fd32-4ed9-40f8-a2e3-01883b897f3d
 
