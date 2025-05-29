@@ -11,7 +11,7 @@
 * Enable notifications (xfce-notify-4.0)
 * Showlist function includes -n flag to number lines. Handy for using delete.
 * Queued command to see the next song in the queue.
-* Requires mplayer, mp3info, ffmpeg and shuf be installed
+* Requires mplayer, mp3info, ffmpeg and shuf be installed. shuf is part of the coreutils package
 
 * Update: You can now jump forward by x number of seconds or rewind x number of seconds on any song.
 The equalizer can now be turned on or off during playback.
