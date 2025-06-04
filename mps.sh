@@ -39,8 +39,6 @@ echo "  pause - pause/unpause music"
 echo "  mute - toggle mplayer mute"
 echo "  next - play next track in playlist"
 echo "  previous - play previous track in playlist"
-echo "  rewind - use with number of seconds. example - rewind 10"
-echo "  forward - use with number of seconds example - forward 10"
 echo "  repeat - repeat the currently playing track once"
 echo "  stop - stop playback"
 echo "  trackinfo - show info about currently playing track"
@@ -178,16 +176,6 @@ function repeat {
 echo loop 2 > /tmp/fifo
 song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
 echo 'loadfile "$song"' 2 > /tmp/fifo
-}
-
-function forward {
-[[ -z $1 ]] && echo "use numnber of seconds. For example - forward 10"
-echo "seek $1" > /tmp/fifo
-}
-
-function rewind {
-[[ -z $1 ]] && echo "use numnber of seconds. For example - rewind 10"
-echo "seek -$1" > /tmp/fifo
 }
 
 function pause {
