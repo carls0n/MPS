@@ -13,8 +13,7 @@
 * Queued command to see the next song in the queue.
 * Requires mplayer, mp3info, ffmpeg and shuf be installed. shuf is part of the coreutils package
 
-* Update: You can now jump forward by x number of seconds or rewind x number of seconds on any song.
-The equalizer can now be turned on or off during playback.
+* Update: The equalizer can now be turned on or off during playback.
 When updating a playlist after adding songs, you can now use 'mps update sort [ playlist ]' to sort songs alphabetically.
 
 * OpenBSD users can install coreutils from the OpenBSD repository and then cp /usr/local/bin/gshuf /usr/local/bin/shuf
