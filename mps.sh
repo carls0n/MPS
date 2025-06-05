@@ -188,7 +188,6 @@ function rewind  {
 echo seek -$1 > /tmp/fifo
 }
 
-
 function pause {
 echo "pause" > /tmp/fifo
 }
