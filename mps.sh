@@ -40,8 +40,6 @@ echo "  mute - toggle mplayer mute"
 echo "  next - play next track in playlist"
 echo "  previous - play previous track in playlist"
 echo "  repeat - repeat the currently playing track once"
-echo "  forward - seek forward by x seconds"
-echo "  rewind - seek back by x seconds"
 echo "  stop - stop playback"
 echo "  trackinfo - show info about currently playing track"
 echo "  albuminfo - show album information"
@@ -178,14 +176,6 @@ function repeat {
 echo loop 2 > /tmp/fifo
 song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
 echo 'loadfile "$song"' 2 > /tmp/fifo
-}
-
-function forward {
-echo seek +$1 > /tmp/fifo
-}
-
-function rewind  {
-echo seek -$1 > /tmp/fifo
 }
 
 function pause {
