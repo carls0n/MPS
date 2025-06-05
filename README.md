@@ -4,7 +4,6 @@
 * Ability to save, update and load playlists<br>
 * Puts Mplayer in the background (slave mode)<br>
 * Supports repeat and shuffle modes<br>
-* Ability to rewind or move forward in track<br>
 * Trackinfo feature to get information about currently playing track<br>
 * Albuminfo command to get album info and year<br>
 * Status feature to get time remaining and percent finished, as well as status indicators<br>
