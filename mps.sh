@@ -40,6 +40,8 @@ echo "  mute - toggle mplayer mute"
 echo "  next - play next track in playlist"
 echo "  previous - play previous track in playlist"
 echo "  repeat - repeat the currently playing track once"
+echo "  forward - seek forward by x seconds"
+echo "  rewind - seek back by x seconds"
 echo "  stop - stop playback"
 echo "  trackinfo - show info about currently playing track"
 echo "  albuminfo - show album information"
@@ -67,7 +69,7 @@ echo "  eq - turn on equalizer"
 echo "  eq off - turn off equalizer"
 echo ""
 }
-
+ 
 function get_args {
 [ $# -eq 0 ] && usage && exit
 while getopts ":h" arg; do
@@ -177,6 +179,15 @@ echo loop 2 > /tmp/fifo
 song=$(cat /tmp/log | grep Playing | sed 's/Playing//g' | sed 's/ //1'| sed 's/.$//1' | tail -n 1) 
 echo 'loadfile "$song"' 2 > /tmp/fifo
 }
+
+function forward {
+echo seek +$1 > /tmp/fifo
+}
+
+function rewind  {
+echo seek -$1 > /tmp/fifo
+}
+
 
 function pause {
 echo "pause" > /tmp/fifo
@@ -428,7 +439,7 @@ echo "1" > $playlists/.eq_state
 (tail -n 24 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
 do
 echo "af_add equalizer=$eq_settings" > /tmp/fifo
-echo "1" > $playlists/.eq_state mp
+echo "1" > $playlists/.eq_state
 done > /dev/null 2>&1 &)
 else
 echo mplayer is not running && exit
