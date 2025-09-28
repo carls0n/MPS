@@ -19,6 +19,7 @@ music=~/Music
 playlists=/home/user/.mps
 eq_settings="8:7:4:1:1:0:1:2:5:5"
 
+
 function usage {
 echo ""
 echo "  MPS - Mplayer script 2022 Marc Carlson"
@@ -57,14 +58,10 @@ echo "  lsplaylists - show playlists"
 echo ""
 echo "  -s) shuffle songs (random) - use with play"
 echo "  -r) repeat playlist - use with play"
-echo "  -e) use equalizer - use with play"
 echo "  -n) use notifications - use with play"
 echo ""
 echo "  notify - turn on notifications"
 echo "  notify off - turn off notifications"
-echo ""
-echo "  eq - turn on equalizer"
-echo "  eq off - turn off equalizer"
 echo ""
 }
  
@@ -232,14 +229,11 @@ sec=$(mp3info -p "%S" "$song")
 remain=$((sec-position))
 duration=$(mp3info -p '%m:%02s' "$song")
 percent=$(tail /tmp/log | grep PERCENT | sed 's/ANS_PERCENT_POSITION=//g' | tail -n 1)
-#random=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-shuffle'; then printf " Random: on"; else printf " Random: off"; fi)
 repeat=$(ps -x | grep mplayer | grep -v grep | if grep -q '\-loop 0'; then printf " Repeat: on"; else printf " Repeat: off"; fi)
 random=$(if [[ $(cat $playlists/.state) == "1" ]]; then printf " Random: on"; else printf " Random: off"; fi)
 notify=$(ps -x | grep tail | grep -v grep | if grep -q 'tail -n 25 -f /tmp/log'; then printf " Notify: on"; else printf " Notify: off\n"; fi)
-eq=$(ps -x | grep tail | grep -v grep | if grep -q "tail -n 24 -f /tmp/log"; then printf " Equalizer: on"; else printf " Equalizer: off\n"; fi)
-printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat $eq\n" $((remain / 60 % 60)) $((remain % 60))
+printf "Time Remaining: %d:%02d/$duration - ($percent%%) $random $repeat $notify\n" $((remain / 60 % 60)) $((remain % 60))
 }
-
 
 function playtime {
 [[ -f $playlists/.state ]] &&
@@ -277,7 +271,6 @@ duration=$((duration+length))
 time=$((duration-position))
 remain=$((duration-length-position))
 count=$(cat $playlists/.count)
-#[[ -f $playlists/.previous ]] && previous=$(cat $playlists/.previous)
 left=$((number-count))
 if [[ $left == "1" ]] && num="track" || num="tracks"
 then
@@ -300,7 +293,7 @@ printf "Playlist already exists - Use mps update\n" && exit
 
 function update {
 [[ -z $1 ]] && echo Enter playlist name - mps update playlist && exit
-[[ -f $playlists/$2 ]] && [[ $1 == "sort" ]] && cat /tmp/playlist | sort /tmp/playlist -o $playlists/$2 && cp $playlists/$2 /tmp/playlist && exit
+[[ -f $playlists/$2 ]] && [[ $1 == "sort" ]] && cat /tmp/playlist | sort /tmp/playlist -o $playlists/$2 && cp $playlists/$2 /tmp/playlist && cp /tmp/playlist $playlists/$1 && exit
 [[ -f $playlists/$1 ]] && cp /tmp/playlist $playlists/$1 && exit
 echo "Playlist doesn't exist. Use mps save"
 }
@@ -320,7 +313,6 @@ function lsplaylists {
 [[ -d $playlists ]] && find $playlists -type f  ! -name ".*"  -exec basename {} \;  && exit
 printf "no playlists found\n"
 }
-
 
 function remove {
 [[ -f $playlists/$1 ]] && rm $playlists/$1 && exit
@@ -413,48 +405,9 @@ function shuffle {
 shuf /tmp/playlist > /tmp/2
 }
 
-function eq {
-[[ ! -e $playlists/.eq_state ]] && touch $playlists/.eq_state
-if [[ $1 == "off" ]]; then
-echo "af_clr" > /tmp/fifo
-echo "0" > $playlists/.eq_state
-pid6=$(ps -x | grep "tail -n 24 -f /tmp/log" | awk '{print $1}')
-kill $pid6 2>/dev/null
-else
-ps -x | grep tail | grep -v grep | if grep -q 'tail -n 24 -f /tmp/log'; then echo equalizer already enabled && exit
-elif pgrep -x mplayer >/dev/null; then
-echo "af_add equalizer=$eq_settings" > /tmp/fifo
-echo "1" > $playlists/.eq_state 
-(tail -n 24 -f /tmp/log  | grep --line-buffered "Playing" |  while read line
-do
-echo "af_add equalizer=$eq_settings" > /tmp/fifo
-echo "1" > $playlists/.eq_state
-done > /dev/null 2>&1 &)
-else
-echo mplayer is not running && exit
-fi
-fi
-kill_eq &
-}
-
-function kill_eq {
-while true; do
-if pgrep -x mplayer >/dev/null
-then
-sleep 1
-else
-pid6=$(ps -x | grep tail | grep -v grep | grep 'tail -n 24 -f /tmp/log' | awk '{print $1}')
-kill $pid6 2>/dev/null
-echo "0" > $playlists/.eq_state
-break
-fi
-done
-}
-
 function play {
 [[ ! -f $playlists/.state ]] && mkdir -p $playlists
 echo 0 > $playlists/.state
-#echo 0 > $playlists/.eq_state
 [[ $test ]] && echo mplayer already running && exit
 [[ ! -f /tmp/playlist ]] && echo No songs in playlist && exit
 [[ ! -e /tmp/fifo ]] && mkfifo /tmp/fifo
@@ -462,9 +415,8 @@ echo 0 > $playlists/.state
 [[ "$@" =~ 'r' ]] && repeat="-loop 0"
 [[ "$@" =~ 's' ]] && (shuffle &) && echo "1" > $playlists/.state
 [[ "$@" =~ 's' ]] && playlist=/tmp/2 || playlist=/tmp/playlist &&
-(mplayer $repeat -slave -input file=/tmp/fifo -playlist $playlist > /tmp/log 2>&1 &)
+(mplayer $repeat -slave -input file=/tmp/fifo -playlist $playlist -af equalizer=$eq_settings > /tmp/log 2>&1 &)
 [[ "$@" =~ 'n' ]] && notify &
-[[ "$@" =~ 'e' ]] && eq &
 counting &
 }
 
