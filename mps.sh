@@ -19,7 +19,6 @@ music=~/Music
 playlists=/home/user/.mps
 eq_settings="8:7:4:1:1:0:1:2:5:5"
 
-
 function usage {
 echo ""
 echo "  MPS - Mplayer script 2022 Marc Carlson"
@@ -287,14 +286,16 @@ playlist="/tmp/playlist"
 fi
 [[ ! -d $playlists ]] && mkdir -p $playlists
 [[ $1 ]] && [[ ! -f $playlists/$1 ]] &&
-cp $playlist $playlists/$1 && exit
+cp $playlist $playlists/$1 &&
+echo Playlist successfully saved && exit
 printf "Playlist already exists - Use mps update\n" && exit
 }
 
 function update {
 [[ -z $1 ]] && echo Enter playlist name - mps update playlist && exit
-[[ -f $playlists/$2 ]] && [[ $1 == "sort" ]] && cat /tmp/playlist | sort /tmp/playlist -o $playlists/$2 && cp $playlists/$2 /tmp/playlist && cp /tmp/playlist $playlists/$1 && exit
-[[ -f $playlists/$1 ]] && cp /tmp/playlist $playlists/$1 && exit
+[[ -f $playlists/$2 ]] && [[ $1 == "sort" ]] && cat /tmp/playlist | sort /tmp/playlist -o $playlists/$2 && cp $playlists/$2 /tmp/playlist && cp /tmp/playlist $playlists/$1
+[[ -f $playlists/$1 ]] && cp /tmp/playlist $playlists/$1 &&
+echo Playlist successfully updated && exit
 echo "Playlist doesn't exist. Use mps save"
 }
 
