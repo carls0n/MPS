@@ -20,7 +20,6 @@ playlists=~/.mps
 fifo=/tmp/fifo
 eq_settings="8:7:4:1:1:0:1:2:5:5"
 
-
 function cleanup {
 if ! pgrep -x mplayer >/dev/null
 then
