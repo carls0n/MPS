@@ -425,7 +425,5 @@ function play {
 counting &
 }
 
-
-
 get_args $@
 $@
