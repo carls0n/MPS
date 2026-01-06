@@ -76,35 +76,31 @@ usage() {
   echo "  -r) repeat playlist - use with play"
   echo "  -n) use notifications - use with play"
   echo ""
-  echo "  notify - turn on notifications"
-  echo "  notify off - turn off notifications"
-  echo ""
 }
 
-function get_args {
-    [ $# -eq 0 ] && usage && exit
-    while getopts ":h" arg; do
-       case $arg in
-            h) usage && exit ;;
-       esac
-    done
-}
 
 parse_options() {
-    local OPTIND=1
+
+    [[ $# -eq 0 ]] && usage && exit 1
+
     local opt
-    shuf_enabled=0 
+    local OPTIND=1
+
+    shuf_enabled=0
     repeat_enabled=0
+    notify_enabled=0
 
-
-    while getopts "nsr" opt "${@:2}"; do
-        case $opt in
+    while getopts "nsrh" opt; do
+        case "$opt" in
             s) shuf_enabled=1 ;;
             r) repeat_enabled=1 ;;
-            n) notify ;;
+            n) notify_enabled=1 ;;
+            h) usage; exit 0 ;;
             *) ;;
         esac
     done
+   
+    return $((OPTIND - 1))
 }
 
 shopt -s nocasematch
@@ -401,19 +397,15 @@ stop() {
   if [[ -f $playlists/.state ]]; then
     echo "0" > "$playlists/.state"
     [[ $test ]] && pkill mplayer
-    cleanup
-    exit
+    cleanup && exit
+ 
   fi
 
-  echo "mps already stopped"
-  exit
+echo "mplayer already stopped"
+
 }
 
 notify() {
-  if [[ $1 == "off" ]] && [[ $notify == "true" ]];then
-    pid2=$(pgrep -f "tail -n 25 -f /tmp/log")
-    kill "$pid2" 2>/dev/null
-  else
     if pgrep -f "tail -n 25 -f /tmp/log" >/dev/null; then
       echo "notify already enabled"
       exit
@@ -427,7 +419,6 @@ notify() {
         done >/dev/null 2>&1 &
       )
     fi
-  fi
 }
 
 counting() {
@@ -493,12 +484,15 @@ play() {
     else
         echo "0" > "$playlists/.state"
     fi
-[[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
+    [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
 
-   ( mplayer $repeat -slave -input file="$fifo" -playlist "$playlist"  -af equalizer="$eq_settings" > /tmp/log 2>&1 &
+    ( mplayer $repeat -slave -input file="$fifo" -playlist "$playlist"  -af equalizer="$eq_settings" > /tmp/log 2>&1 &
+
+    [[ $notify_enabled -eq 1 ]] && notify
     mplayer_pid=$! 
     wait "$mplayer_pid" 
     cleanup ) &
+
     counting &
 }
 
@@ -517,6 +511,6 @@ dispatch() {
   esac
 }
 
-get_args "$@"
-dispatch "$@"
 parse_options "$@"
+shift $?
+dispatch "$@"
