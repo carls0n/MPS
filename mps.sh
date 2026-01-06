@@ -116,41 +116,45 @@ ls() {
   find "$music" -maxdepth 1 -type f -exec basename {} \; | sort
 }
 
-title() {
+_music_search() {
+  local tag_format="$1"
+  local query="$2"
+  local tag_val
+
   for file in "$music"/*.mp3; do
-    [[ $(mp3info -p '%t' "$file") == "$@"* ]] && basename "$file"
+    [[ -e "$file" ]] || continue 
+    tag_val=$(mp3info -p "$tag_format" "$file")
+    if [[ "${tag_val,,}" == "${query,,}"* ]]; then
+      basename "$file"
+    fi
   done
 }
 
-album() {
-  for file in "$music"/*.mp3; do
-    [[ $(mp3info -p '%l' "$file") == "$@"* ]] && basename "$file"
-  done
-}
-
-artist() {
-  for file in "$music"/*.mp3; do
-    [[ $(mp3info -p '%a' "$file") == "$@"* ]] && basename "$file"
-  done
-}
-
-genre() {
-  for file in "$music"/*.mp3; do
-    [[ $(mp3info -p '%g' "$file") == "$@"* ]] && basename "$file"
-  done
-}
+title()  { _music_search '%t' "$*"; }
+album()  { _music_search '%l' "$*"; }
+artist() { _music_search '%a' "$*"; }
+genre()  { _music_search '%g' "$*"; }
 
 year() {
-  string="$1"
-  IFS='-' read -ra split <<< "$string"
+  local query="$1"
+  local start end year_val
+
+  if [[ "$query" == *-* ]]; then
+    start="${query%%-*}"
+    end="${query##*-}"
+  else
+   
+    start="$query"
+    end="$query"
+  fi
 
   for file in "$music"/*.mp3; do
-    year=$(mp3info -p '%y' "$file")
-
-    if [[ -z "${split[1]}" ]]; then
-      [[ $year -eq $1 ]] && basename "$file"
-    else
-      [[ $year -ge "${split[0]}" && $year -le "${split[1]}" ]] && basename "$file"
+    [[ -e "$file" ]] || continue
+    
+    year_val=$(mp3info -p '%y' "$file")
+    
+    if [[ -n "$year_val" && "$year_val" -ge "$start" && "$year_val" -le "$end" ]]; then
+      basename "$file"
     fi
   done
 }
@@ -438,8 +442,10 @@ while [[ ! -f /tmp/log ]]; do
 }
 
 albuminfo() {
-  song=$(grep Playing /tmp/log | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
-  printf "%s\n" "$(mp3info -p '%a - %l (%y)' "$song")"
+  [[ $test ]] &&
+  song=$(grep Playing /tmp/log | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1) &&
+  printf "%s\n" "$(mp3info -p '%a - %l (%y)' "$song")" && exit                  
+  printf "mplayer is not running\n"
 }
 
 queued() {
