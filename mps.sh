@@ -29,7 +29,7 @@ cleanup() {
 
     files=(/tmp/log "$fifo" /tmp/album.jpg "$playlists/.shuffled")
     for file in "${files[@]}"; do
-      [[ -e "$file" ]] && rm "$file"
+      [[ -e "$file" ]] && rm "$file" 2>/dev/null
     done
   fi
 }
