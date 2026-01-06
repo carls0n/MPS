@@ -431,6 +431,11 @@ notify() {
 }
 
 counting() {
+while [[ ! -f /tmp/log ]]; do
+    sleep 0.1
+  done
+
+
   [[ ! -d $playlists ]] && mkdir -p "$playlists"
 
   (
@@ -490,11 +495,12 @@ play() {
     fi
 [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
 
-    (mplayer $repeat -slave -input file="$fifo" -playlist "$playlist" -af equalizer="$eq_settings" > /tmp/log 2>&1 &)
-    
+   ( mplayer $repeat -slave -input file="$fifo" -playlist "$playlist"  -af equalizer="$eq_settings" > /tmp/log 2>&1 &
+    mplayer_pid=$! 
+    wait "$mplayer_pid" 
+    cleanup ) &
     counting &
 }
-
 
 dispatch() {
   local cmd="$1"
