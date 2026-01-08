@@ -18,7 +18,7 @@
 music=~/Music
 playlists=~/.mps
 fifo=/tmp/fifo
-#eq_settings="8:7:4:1:1:0:1:2:5:5"
+eq_settings="8:7:4:1:1:0:1:2:5:5"
 
 cleanup() {
   if ! pgrep -x mplayer >/dev/null; then
