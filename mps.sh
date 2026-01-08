@@ -78,7 +78,6 @@ usage() {
   echo ""
 }
 
-
 parse_options() {
 
     local opt
