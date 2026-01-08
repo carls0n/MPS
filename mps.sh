@@ -18,7 +18,7 @@
 music=~/Music
 playlists=~/.mps
 fifo=/tmp/fifo
-eq_settings="8:7:4:1:1:0:1:2:5:5"
+#eq_settings="8:7:4:1:1:0:1:2:5:5"
 
 cleanup() {
   if ! pgrep -x mplayer >/dev/null; then
@@ -255,31 +255,31 @@ trackinfo() {
 status() {
   [[ ! $test ]] && printf "mplayer is not running\n" && exit
 
-  echo get_time_pos > "$fifo"
-  echo get_percent_pos > "$fifo"
-  sleep 0.3
+  printf "get_time_pos\nget_percent_pos\n" > "$fifo"
+  sleep 0.1
 
   position=$(grep TIME /tmp/log | sed 's/ANS_TIME_POSITION=//; s/\..*//' | tail -n 1)
   song=$(grep Playing /tmp/log | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
+
   sec=$(mp3info -p "%S" "$song")
-  remain=$((sec - position))
   duration=$(mp3info -p '%m:%02s' "$song")
+  remain=$((sec - position))
+
   percent=$(grep PERCENT /tmp/log | sed 's/ANS_PERCENT_POSITION=//' | tail -n 1)
 
-  repeat=$(pgrep -f "mplayer.*-loop 0" >/dev/null && printf " Repeat: on" || printf " Repeat: off")
-  random=$(grep -q "^1$" "$playlists/.state" && printf " Random: on" || printf " Random: off")
-  notify=$(pgrep -f "tail -n 25 -f /tmp/log" >/dev/null && printf " Notify: on" || printf " Notify: off")
+  repeat=$(pgrep -f "mplayer.*-loop 0" >/dev/null && echo " Repeat: on" || echo " Repeat: off")
+  random=$(grep -q "^1$" "$playlists/.state" && echo " Random: on" || echo " Random: off")
+  notify=$(pgrep -f "tail -n 25 -f /tmp/log" >/dev/null && echo " Notify: on" || echo " Notify: off")
 
   printf "Time Remaining: %d:%02d/$duration - (%s%%) %s %s %s\n" \
     $((remain / 60)) $((remain % 60)) "$percent" "$random" "$repeat" "$notify"
 }
 
 playtime() {
-  if [[ -f $playlists/.state && $(cat "$playlists/.state") == "1" ]]; then
+  # Select playlist
+  playlist="$playlists/current"
+  [[ -f $playlists/.state && $(<"$playlists/.state") == 1 ]] && \
     playlist="$playlists/.shuffled"
-  else
-    playlist="$playlists/current"
-  fi
 
   [[ ! -f $playlists/current ]] && printf "No songs in playlist\n" && exit
 
@@ -287,60 +287,43 @@ playtime() {
 
   if [[ ! $test ]]; then
     duration=0
-    while read -r line; do
-      length=$(mp3info -p '%S' "$line")
-      duration=$((duration + length))
+    while IFS= read -r line; do
+      (( duration += $(mp3info -p '%S' "$line") ))
     done < "$playlist"
 
-    [[ $number == 1 ]] && num="track" || num="tracks"
+    num=$([[ $number -eq 1 ]] && echo track || echo tracks)
 
     printf "%d %s total - Total playtime: %02d:%02d:%02d\n" \
-      "$number" "$num" $((duration / 3600)) $((duration / 60 % 60)) $((duration % 60))
-
+      "$number" "$num" \
+      $((duration/3600)) $((duration/60%60)) $((duration%60))
     exit
   fi
 
   echo get_time_pos > "$fifo"
-  sleep 0.3
+  sleep 0.2
 
-  position=$(grep TIME /tmp/log | sed 's/ANS_TIME_POSITION=//; s/\..*//' | tail -n 1)
-  song=$(grep Playing /tmp/log | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
+  position=$(grep -o 'ANS_TIME_POSITION=[0-9]*' /tmp/log | awk -F= '{print $2}' | tail -n1)
+  song=$(grep -o 'Playing .*' /tmp/log | sed 's/Playing //; s/.$//' | tail -n1)
+
   length=$(mp3info -p '%S' "$song")
-
   duration=$length
-  while read -r line; do
-    length=$(mp3info -p '%S' "$line")
-    duration=$((duration + length))
-  done < <(grep -A $((number - 1)) "$song" "$playlist")
+  found=0
 
-  time=$((duration - position))
-  remain=$((duration - length - position))
-  count=$(cat "$playlists/.count")
-  left=$((number - count))
+  while IFS= read -r line; do
+    if [[ $found -eq 1 ]]; then
+      (( duration += $(mp3info -p '%S' "$line") ))
+    elif [[ $line == "$song" ]]; then
+      found=1
+    fi
+  done < "$playlist"
 
-  [[ $left == 1 ]] && num="track" || num="tracks"
+  remain=$((duration - position))
+  left=$((number - $(<"$playlists/.count")))
+  num=$([[ $left -eq 1 ]] && echo track || echo tracks)
 
   printf "%d %s remaining - Time remaining: %02d:%02d:%02d\n" \
-    "$left" "$num" $((remain / 3600)) $((remain / 60 % 60)) $((remain % 60))
-}
-    
-save() {
-  if [[ $(cat "$playlists/.state") == "1" ]]; then
-    playlist="$playlists/.shuffled"
-  else
-    playlist="$playlists/current"
-  fi
-
-  [[ ! -d $playlists ]] && mkdir -p "$playlists"
-
-  if [[ $1 && ! -f $playlists/$1 ]]; then
-    cp "$playlist" "$playlists/$1"
-    echo "Playlist successfully saved"
-    exit
-  fi
-
-  printf "Playlist already exists - Use mps update\n"
-  exit
+    "$left" "$num" \
+    $((remain/3600)) $((remain/60%60)) $((remain%60))
 }
 
 update() {
@@ -395,15 +378,13 @@ delete() {
   sed -i "${1}d" "$playlists/current"
 }
 
-stop() {
-  if [[ -f $playlists/.state ]]; then
-    echo "0" > "$playlists/.state"
-    [[ $test ]] && pkill mplayer
-    cleanup  && exit
- 
-  fi 
-
-echo "mplayer already stopped"
+function stop {
+[[ -f $playlists/.state ]] &&
+echo "0" > $playlists/.state && 
+[[ $test ]] && pkill mplayer
+cleanup
+[[ ! $test ]] &&
+echo mps already stopped 
 
 }
 
@@ -502,10 +483,10 @@ play() {
 
 dispatch() {
   local cmd="$1"
+  [[ -z $cmd ]] && usage && exit
   shift
-
   case "$cmd" in
-    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle|usage)
+    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle)
       "$cmd" "$@"
       ;;
     *)
