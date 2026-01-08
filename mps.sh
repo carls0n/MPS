@@ -81,8 +81,6 @@ usage() {
 
 parse_options() {
 
-    [[ $# -eq 0 ]] && usage && exit 1
-
     local opt
     local OPTIND=1
 
