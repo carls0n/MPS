@@ -399,9 +399,9 @@ stop() {
   if [[ -f $playlists/.state ]]; then
     echo "0" > "$playlists/.state"
     [[ $test ]] && pkill mplayer
-    cleanup && exit
+    cleanup  && exit
  
-  fi
+  fi 
 
 echo "mplayer already stopped"
 
