@@ -325,6 +325,20 @@ playtime() {
     $((remain/3600)) $((remain/60%60)) $((remain%60))
 }
 
+save() {
+if [[ $(cat $playlists/.state) == "1" ]]
+then
+playlist="$playlists/.shuffled"
+else 
+playlist="$playlists/current"
+fi
+[[ ! -d $playlists ]] && mkdir -p $playlists
+[[ $1 ]] && [[ ! -f $playlists/$1 ]] &&
+cp $playlist $playlists/$1 &&
+echo Playlist successfully saved && exit
+printf "Playlist already exists - Use mps update\n" && exit
+}
+
 update() {
   [[ -z $1 ]] && echo "Enter playlist name - mps update playlist" && exit
 
