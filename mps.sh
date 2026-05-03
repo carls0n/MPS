@@ -203,9 +203,7 @@ previous() {
 
 
 repeat() {
-  echo "loop 2" > "$fifo"
-  song=$(grep Playing /tmp/log | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
-  echo "loadfile \"$song\"" > "$fifo"
+  echo "set_property loop 1" > "$fifo"
 }
 
 pause() {
