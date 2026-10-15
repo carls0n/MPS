@@ -1,3 +1,9 @@
+10.15.2026 changelog<br>
+\* Changed search syntax from 'mps title <title>' to 'mps search title <title>'<br>
+\* Added the ability to add one track at a time via 'mps add <title>'<br>
+\* Added ability to view songs in a playlist via 'mps playlist $playlist'
+<hr>
+
 * Customizable equalizer<br>
 * Search for tracks by title, genre, album, artist or range of years<br>
 * Also supports ls and add features to add tracks to playlists<br>
