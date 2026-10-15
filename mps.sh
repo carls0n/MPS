@@ -41,11 +41,11 @@ usage() {
   echo "  MPS - Mplayer script 2022 Marc Carlson"
   echo "  Usage: mps [options]"
   echo ""
-  echo "  title <title> - search tracks by title"
-  echo "  album <album> - search tracks by album"
-  echo "  genre <genre> - search tracks by genre"
-  echo "  artist <artist> - search tracks by artist"
-  echo "  year <range> - search by year (1970-1979)"
+  echo "  search title <title> - search tracks by title"
+  echo "  search album <album> - search tracks by album"
+  echo "  search genre <genre> - search tracks by genre"
+  echo "  search artist <artist> - search tracks by artist"
+  echo "  search year <range> - search by year (1970-1979)"
   echo ""
   echo "  ls - list tracks in directory"
   echo "  add - add tracks. Can also be used with ls"
@@ -62,6 +62,7 @@ usage() {
   echo "  albuminfo - show album information"
   echo "  status - show time remaining and percent finished"
   echo "  playtime - show remaining tracks and time of playlist"
+  echo "  playlist <playlist> - List tracks in playlist"
   echo "  delete <track number> - delete track"
   echo "  clear - clear playlist"
   echo "  queued - show next track in queue"
@@ -114,51 +115,125 @@ ls() {
 }
 
 _music_search() {
-  local tag_format="$1"
-  local query="$2"
-  local tag_val
-
-  for file in "$music"/*.mp3; do
-    [[ -e "$file" ]] || continue 
-    tag_val=$(mp3info -p "$tag_format" "$file")
-    if [[ "${tag_val,,}" == "${query,,}"* ]]; then
-      basename "$file"
+  local mode="$1" # 'text', 'year', or 'global'
+  local format_or_query="$2"
+  local query="$3"
+  
+  local start end
+  if [[ "$mode" == "year" || "$mode" == "global" ]]; then
+    local year_query="${query:-$format_or_query}"
+    if [[ "$year_query" =~ ^[0-9]{4}$ ]]; then
+      start="$year_query"
+      end="$year_query"
+    elif [[ "$year_query" =~ ^[0-9]{4}-[0-9]{4}$ ]]; then
+      start="${year_query%%-*}"
+      end="${year_query##*-}"
     fi
-  done
-}
-
-title()  { _music_search '%t' "$*"; }
-album()  { _music_search '%l' "$*"; }
-artist() { _music_search '%a' "$*"; }
-genre()  { _music_search '%g' "$*"; }
-
-year() {
-  local query="$1"
-  local start end year_val
-
-  if [[ "$query" == *-* ]]; then
-    start="${query%%-*}"
-    end="${query##*-}"
-  else
-   
-    start="$query"
-    end="$query"
   fi
 
   for file in "$music"/*.mp3; do
-    [[ -e "$file" ]] || continue
-    
-    year_val=$(mp3info -p '%y' "$file")
-    
-    if [[ -n "$year_val" && "$year_val" -ge "$start" && "$year_val" -le "$end" ]]; then
-      basename "$file"
+    [[ -e "$file" ]] || continue 
+
+    if [[ "$mode" == "text" ]]; then
+      local tag_val
+      tag_val=$(mp3info -p "$format_or_query" "$file")
+      if [[ "${tag_val,,}" == *"${query,,}"* ]]; then
+        basename "$file"
+      fi
+
+    elif [[ "$mode" == "year" ]]; then
+      local year_val
+      year_val=$(mp3info -p '%y' "$file")
+      if [[ -n "$start" && -n "$year_val" && "$year_val" -ge "$start" && "$year_val" -le "$end" ]]; then
+        basename "$file"
+      fi
+
+    elif [[ "$mode" == "global" ]]; then
+      local all_tags year_val
+      all_tags=$(mp3info -p "%t|%l|%a|%g" "$file")
+      year_val=$(mp3info -p '%y' "$file")
+      
+      if [[ "${all_tags,,}" == *"${format_or_query,,}"* ]]; then
+        basename "$file"
+      elif [[ -n "$start" && -n "$year_val" && "$year_val" -ge "$start" && "$year_val" -le "$end" ]]; then
+        basename "$file"
+      fi
     fi
   done
 }
 
+# Tag wrappers (Safely dropping the required 'search' parameter before execution)
+# Specific tag wrappers (Strictly enforcing that 'search' must be present)
+title() {
+  if [[ "${1,,}" != "search" ]]; then
+    echo "Error: Command must contain the term 'search'." >&2
+    return 1
+  fi
+  shift
+  _music_search 'text' '%t' "$*"
+}
+
+album() {
+  if [[ "${1,,}" != "search" ]]; then
+    echo "Error: Command must contain the term 'search'." >&2
+    return 1
+  fi
+  shift
+  _music_search 'text' '%l' "$*"
+}
+
+artist() {
+  if [[ "${1,,}" != "search" ]]; then
+    echo "Error: Command must contain the term 'search'." >&2
+    return 1
+  fi
+  shift
+  _music_search 'text' '%a' "$*"
+}
+
+genre() {
+  if [[ "${1,,}" != "search" ]]; then
+    echo "Error: Command must contain the term 'search'." >&2
+    return 1
+  fi
+  shift
+  _music_search 'text' '%g' "$*"
+}
+
+year() {
+  if [[ "${1,,}" != "search" ]]; then
+    echo "Error: Command must contain the term 'search'." >&2
+    return 1
+  fi
+  shift
+  _music_search 'year' "$*"
+}
+
+# The catch-all search command routing layer
+search() {
+  if [[ -z "$1" ]]; then
+    echo "Error: Search query cannot be empty." >&2
+    return 1
+  fi
+
+  case "${1,,}" in
+    title|album|artist|genre|year)
+      local cmd="$1"
+      shift
+      # Passes 'search' as $1 to the target command to satisfy the wrapper check
+      "$cmd" "search" "$@"
+      ;;
+    *)
+      # Global search fallback (e.g., mps search "the wall")
+      _music_search 'global' "$@"
+      ;;
+  esac
+}
+
+
 playing() {
   while read -r results; do
-    echo "$music/$results" >> "$playlists/current"
+    echo "$music/$results" >> "$playlists/.current"
     echo "$music/$results" >> /tmp/new
   done
 
@@ -167,7 +242,7 @@ playing() {
 
 not_playing() {
   while read -r results; do
-    echo "$music/$results" >> "$playlists/current"
+    echo "$music/$results" >> "$playlists/.current"
   done
 }
 
@@ -179,15 +254,27 @@ shuffle_error() {
 test=$(pgrep mplayer)
 [[ -f $playlists/.state ]] && random=$(grep 1 "$playlists/.state")
 
-add() {
-  [[ ! -d $playlists ]] && mkdir -p "$playlists"
-  [[ -e /tmp/new ]] && rm /tmp/new
-  [[ $random ]] && shuffle_error
+playlist() {
+find "$playlists/$1" -maxdepth 1 -type f -exec sh -c 'while read -r line; do basename "$line"; done < "$1"' _ {} \; | sort
+}
 
-  if [[ $test ]] && [[ -z $random ]]; then
-    playing
+add() {
+  [[ ! -d "$playlists" ]] && mkdir -p "$playlists"
+  [[ -e /tmp/new ]] && rm /tmp/new
+  [[ -n "$random" ]] && shuffle_error
+
+  if [[ $# -gt 0 ]]; then
+    if [[ -n "$test" ]] && [[ -z "$random" ]]; then
+      echo "$*" | playing
+    else
+      echo "$*" | not_playing
+    fi
   else
-    not_playing
+    if [[ -n "$test" ]] && [[ -z "$random" ]]; then
+      playing
+    else
+      not_playing
+    fi
   fi
 
   exit
@@ -215,10 +302,10 @@ mute() {
 }
 
 clear() {
-  [[ ! -f $playlists/current ]] && echo "No songs in playlist" && exit
+  [[ ! -f $playlists/.current ]] && echo "No songs in playlist" && exit
   [[ $test ]] && pkill mplayer
 
-  rm "$playlists/current"
+  rm "$playlists/.current"
   [[ -f $playlists/.shuffled ]] && rm "$playlists/.shuffled"
 
   echo "0" > "$playlists/.state"
@@ -226,17 +313,17 @@ clear() {
 }
 
 showlist() {
-  [[ ! -f $playlists/current ]] && echo "No songs in playlist" && exit
+  [[ ! -f $playlists/.current ]] && echo "No songs in playlist" && exit
 
   if [[ -z $1 ]]; then
     while IFS= read -r line; do
       printf "%s\n" "$(mp3info -p '%a - %t' "$line")"
-    done < "$playlists/current"
+    done < "$playlists/.current"
 
   elif [[ $1 == "-n" ]]; then
     while IFS= read -r line; do
       printf "%s\n" "$(mp3info -p '%a - %t' "$line")"
-    done < "$playlists/current" | nl -ba
+    done < "$playlists/.current" | nl -ba
   fi
 }
 
@@ -274,11 +361,11 @@ status() {
 
 playtime() {
   # Select playlist
-  playlist="$playlists/current"
+  playlist="$playlists/.current"
   [[ -f $playlists/.state && $(<"$playlists/.state") == 1 ]] && \
     playlist="$playlists/.shuffled"
 
-  [[ ! -f $playlists/current ]] && printf "No songs in playlist\n" && exit
+  [[ ! -f $playlists/.current ]] && printf "No songs in playlist\n" && exit
 
   number=$(wc -l < "$playlist")
 
@@ -328,7 +415,7 @@ if [[ $(cat $playlists/.state) == "1" ]]
 then
 playlist="$playlists/.shuffled"
 else 
-playlist="$playlists/current"
+playlist="$playlists/.current"
 fi
 [[ ! -d $playlists ]] && mkdir -p $playlists
 [[ $1 ]] && [[ ! -f $playlists/$1 ]] &&
@@ -341,13 +428,13 @@ update() {
   [[ -z $1 ]] && echo "Enter playlist name - mps update playlist" && exit
 
   if [[ -f $playlists/$2 && $1 == "sort" ]]; then
-    sort "$playlists/current" -o "$playlists/$2"
-    cp "$playlists/$2" "$playlists/current"
-    cp "$playlists/current" "$playlists/$1"
+    sort "$playlists/.current" -o "$playlists/$2"
+    cp "$playlists/$2" "$playlists/.current"
+    cp "$playlists/.current" "$playlists/$1"
   fi
 
   if [[ -f $playlists/$1 ]]; then
-    cp "$playlists/current" "$playlists/$1"
+    cp "$playlists/.current" "$playlists/$1"
     echo "Playlist successfully updated"
     exit
   fi
@@ -360,19 +447,19 @@ load() {
   [[ ! -f $playlists/$1 ]] && echo "Playlist doesn't exist." && exit
 
   if [[ $test ]]; then
-    cat "$playlists/$1" >> "$playlists/current"
+    cat "$playlists/$1" >> "$playlists/.current"
     echo "loadlist $playlists/$1 2" > "$fifo"
     echo "Playlist loaded -> $1"
     exit
   fi
 
-  cat "$playlists/$1" >> "$playlists/current"
+  cat "$playlists/$1" >> "$playlists/.current"
   echo "Playlist loaded -> $1"
 }
 
 lsplaylists() {
   if [[ -d $playlists ]]; then
-    find "$playlists" -type f ! -name ".*" -exec basename {} \;
+    find "$playlists" -type f ! -name ".*" -exec basename {} \; | sort
     exit
   fi
 
@@ -386,7 +473,7 @@ remove() {
 
 delete() {
   [[ $test ]] && echo "cannot delete tracks during playback" && exit
-  sed -i "${1}d" "$playlists/current"
+  sed -i "${1}d" "$playlists/.current"
 }
 
 function stop {
@@ -442,7 +529,7 @@ queued() {
   [[ ! $test ]] && echo "start playback of playlist to see the next song in the queue" && exit
 
   if [[ $(cat "$playlists/.state") == "0" ]]; then
-    playlist="$playlists/current"
+    playlist="$playlists/.current"
   else
     playlist="$playlists/.shuffled"
   fi
@@ -459,7 +546,7 @@ queued() {
 }
 
 shuffle() {
-  shuf "$playlists/current" > "$playlists/.shuffled"
+  shuf "$playlists/.current" > "$playlists/.shuffled"
 }
 
 play() {
@@ -468,13 +555,13 @@ play() {
     shift "$shift_count"  # Remove the flags (-s, -n, -r) from the arguments
 
     [[ $test ]] && echo "mplayer already running" && exit
-    [[ ! -f $playlists/current ]] && echo "No songs in playlist" && exit
+    [[ ! -f $playlists/.current ]] && echo "No songs in playlist" && exit
     [[ ! -e $fifo ]] && mkfifo "$fifo"
 
-    local playlist="$playlists/current"
+    local playlist="$playlists/.current"
     if [[ $shuf_enabled -eq 1 ]]; then
         # Create shuffled playlist
-        shuf "$playlists/current" > "$playlists/.shuffled"
+        shuf "$playlists/.current" > "$playlists/.shuffled"
         echo "1" > "$playlists/.state"
         playlist="$playlists/.shuffled"
     else
@@ -497,7 +584,7 @@ dispatch() {
   [[ -z $cmd ]] && usage && exit
   shift
   case "$cmd" in
-    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle)
+    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle|search|playlist)
       "$cmd" "$@"
       ;;
     *)
