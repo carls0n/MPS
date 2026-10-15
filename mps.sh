@@ -255,7 +255,7 @@ test=$(pgrep mplayer)
 [[ -f $playlists/.state ]] && random=$(grep 1 "$playlists/.state")
 
 playlist() {
-find "$playlists/$1" -maxdepth 1 -type f -exec sh -c 'while read -r line; do basename "$line"; done < "$1"' _ {} \; | sort
+find "$playlists/$1" -maxdepth 1 -type f -exec sh -c 'while read -r line; do basename "$line"; done < "$1"' _ {} \;
 }
 
 add() {
