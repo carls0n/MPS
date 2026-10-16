@@ -15,7 +15,7 @@
 * Status feature to get time remaining and percent finished, as well as status indicators<br>
 * Shows remaining number of tracks and remaining playlist time.<br>
 * Enable notifications (xfce-notify-4.0)
-* Showlist function includes -n flag to number lines. Handy for using delete.
+* Showlist function includes -n flag to number lines. Handy for using delete or play
 * Queued command to see the next song in the queue.
 * Requires mplayer, mp3info, ffmpeg and shuf be installed. shuf is part of the coreutils package
 
