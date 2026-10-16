@@ -18,7 +18,7 @@
 music=~/Music
 playlists=~/.mps
 fifo=/tmp/fifo
-eq_settings="8:7:4:1:1:0:1:2:5:5"
+eq_settings="8:7:4:1:1:0:1:2:5:5" 
 
 cleanup() {
   if ! pgrep -x mplayer >/dev/null; then
@@ -550,31 +550,73 @@ shuffle() {
 }
 
 play() {
-    parse_options "$@"
-    local shift_count=$?
-    shift "$shift_count"  # Remove the flags (-s, -n, -r) from the arguments
+    local line_number=""
+    local seek_flag=""
 
+    # 1. Look for a trailing number argument before running parse_options
+    for arg in "$@"; do
+        if [[ "$arg" =~ ^[0-9]+$ ]]; then
+            line_number="$arg"
+            break
+        fi
+    done
+
+    # 2. Strip the number out so parse_options doesn't get confused by it
+    local args_clean=()
+    for arg in "$@"; do
+        [[ "$arg" != "$line_number" ]] && args_clean+=("$arg")
+    done
+
+    # 3. Parse your standard flags (-s, -n, -r)
+    parse_options "${args_clean[@]}"
+    local shift_count=$?
+    
     [[ $test ]] && echo "mplayer already running" && exit
     [[ ! -f $playlists/.current ]] && echo "No songs in playlist" && exit
     [[ ! -e $fifo ]] && mkfifo "$fifo"
 
     local playlist="$playlists/.current"
-    if [[ $shuf_enabled -eq 1 ]]; then
-        # Create shuffled playlist
-        shuf "$playlists/.current" > "$playlists/.shuffled"
-        echo "1" > "$playlists/.state"
-        playlist="$playlists/.shuffled"
+    
+    # 4. Handle specific line playing OR standard playlist generation
+    if [[ -n "$line_number" ]]; then
+        # Grab the exact track from the requested line number
+        local specific_track
+        specific_track=$(sed -n "${line_number}p" "$playlists/.current")
+        
+        if [[ -z "$specific_track" ]]; then
+            echo "Error: Track #$line_number does not exist in playlist."
+            exit 1
+        fi
+        
+        # Override playlist target to be just this song, or use it directly
+        playlist="$specific_track"
     else
-        echo "0" > "$playlists/.state"
+        # Standard playlist logic if no number is provided
+        if [[ $shuf_enabled -eq 1 ]]; then
+            shuf "$playlists/.current" > "$playlists/.shuffled"
+            echo "1" > "$playlists/.state"
+            playlist="$playlists/.shuffled"
+        else
+            echo "0" > "$playlists/.state"
+        fi
     fi
+
     [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
 
-    ( mplayer $repeat -slave -input file="$fifo" -playlist "$playlist"  -af equalizer="$eq_settings" > /tmp/log 2>&1 &
-
-    [[ $notify_enabled -eq 1 ]] && notify
-    mplayer_pid=$! 
-    wait "$mplayer_pid" 
-    cleanup ) &
+    # 5. Play using direct track file/URL OR the playlist file depending on input
+    if [[ -n "$line_number" ]]; then
+        ( mplayer $repeat -slave -input file="$fifo" "$playlist" -af equalizer="$eq_settings" > /tmp/log 2>&1 &
+        [[ $notify_enabled -eq 1 ]] && notify
+        mplayer_pid=$! 
+        wait "$mplayer_pid" 
+        cleanup ) &
+    else
+        ( mplayer $repeat -slave -input file="$fifo" -playlist "$playlist" -af equalizer="$eq_settings" > /tmp/log 2>&1 &
+        [[ $notify_enabled -eq 1 ]] && notify
+        mplayer_pid=$! 
+        wait "$mplayer_pid" 
+        cleanup ) &
+    fi
 
     counting &
 }
