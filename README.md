@@ -2,6 +2,10 @@
 \* Changed search syntax from 'mps title <title>' to 'mps search title <title>'<br>
 \* Added the ability to add one track at a time via 'mps add <title>'<br>
 \* Added ability to view songs in a playlist via 'mps playlist $playlist'
+
+10.16.2026 changelog<br>
+\* Added ability to play a song in playlist by line number 'mps play 5'<br>
+\* mps showlist -n' will show you line numbers.
 <hr>
 
 * Customizable equalizer<br>
