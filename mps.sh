@@ -18,7 +18,7 @@
 music=~/Music
 playlists=~/.mps
 fifo=/tmp/fifo
-eq_settings="8:7:4:1:1:0:1:2:5:5" 
+eq_settings="8:7:4:1:1:0:1:2:5:5"
 
 cleanup() {
   if ! pgrep -x mplayer >/dev/null; then
@@ -162,8 +162,6 @@ _music_search() {
   done
 }
 
-# Tag wrappers (Safely dropping the required 'search' parameter before execution)
-# Specific tag wrappers (Strictly enforcing that 'search' must be present)
 title() {
   if [[ "${1,,}" != "search" ]]; then
     echo "Error: Command must contain the term 'search'." >&2
@@ -209,7 +207,6 @@ year() {
   _music_search 'year' "$*"
 }
 
-# The catch-all search command routing layer
 search() {
   if [[ -z "$1" ]]; then
     echo "Error: Search query cannot be empty." >&2
@@ -220,30 +217,74 @@ search() {
     title|album|artist|genre|year)
       local cmd="$1"
       shift
-      # Passes 'search' as $1 to the target command to satisfy the wrapper check
       "$cmd" "search" "$@"
       ;;
     *)
-      # Global search fallback (e.g., mps search "the wall")
       _music_search 'global' "$@"
       ;;
   esac
 }
 
 
-playing() {
-  while read -r results; do
-    echo "$music/$results" >> "$playlists/.current"
-    echo "$music/$results" >> /tmp/new
-  done
+process_tracks() {
+  > /tmp/new
 
-  echo "loadlist /tmp/new 2" >> "$fifo"
-}
+  [[ -d "$playlists" ]] || mkdir -p "$playlists"
 
-not_playing() {
-  while read -r results; do
-    echo "$music/$results" >> "$playlists/.current"
-  done
+  local cr=$'\r'
+
+  if [ $# -gt 0 ]; then
+    for track in "$@"; do
+      # Trim leading whitespace safely
+      while [[ "$track" == [[:space:]]* ]]; do
+        track="${track#?}"
+      done
+
+      while [[ "$track" == *[[:space:]] ]]; do
+        track="${track%?}"
+      done
+
+      track="${track//$cr/}"
+      [ -z "$track" ] && continue
+
+      if [ -f "$music/$track" ]; then
+        echo "$music/$track" >> "$playlists/.current"
+        echo "$music/$track" >> /tmp/new
+      else
+        echo "error: file does not exist: $music/$track" >&2
+        return 1
+      fi
+    done
+  else
+    while read -r track || [[ -n "$track" ]]; do
+      while [[ "$track" == [[:space:]]* ]]; do
+        track="${track#?}"
+      done
+      
+      while [[ "$track" == *[[:space:]] ]]; do
+        track="${track%?}"
+      done
+      
+      track="${track//$cr/}"
+      [ -z "$track" ] && continue
+
+      if [ -f "$music/$track" ]; then
+        echo "$music/$track" >> "$playlists/.current"
+        echo "$music/$track" >> /tmp/new
+      else
+        echo "error: file does not exist: $music/$track" >&2
+        return 1
+      fi
+    done
+  fi
+
+  if [ -s /tmp/new ]; then
+    if [[ -p "$fifo" ]]; then
+      exec 3<> "$fifo"
+      echo "loadlist /tmp/new 2" >&3
+      exec 3>&-
+    fi
+  fi
 }
 
 shuffle_error() {
@@ -260,24 +301,34 @@ find "$playlists/$1" -maxdepth 1 -type f -exec sh -c 'while read -r line; do bas
 
 add() {
   [[ ! -d "$playlists" ]] && mkdir -p "$playlists"
-  [[ -e /tmp/new ]] && rm /tmp/new
+  [[ -e /tmp/new ]] && rm -f /tmp/new
   [[ -n "$random" ]] && shuffle_error
+
+  local track_status=0
 
   if [[ $# -gt 0 ]]; then
     if [[ -n "$test" ]] && [[ -z "$random" ]]; then
-      echo "$*" | playing
+      process_tracks "$@"
+      track_status=$?  # 👈 CAPTURE IMMEDIATELY
     else
-      echo "$*" | not_playing
+      process_tracks "$@"
+      track_status=$?  # 👈 CAPTURE IMMEDIATELY
     fi
   else
     if [[ -n "$test" ]] && [[ -z "$random" ]]; then
-      playing
+      process_tracks
+      track_status=$?
     else
-      not_playing
+      process_tracks
+      track_status=$?
     fi
   fi
 
-  exit
+  if [[ $track_status -ne 0 ]]; then
+    exit 1
+  fi
+
+  exit 0
 }
 
 next() {
@@ -553,7 +604,6 @@ play() {
     local line_number=""
     local seek_flag=""
 
-    # 1. Look for a trailing number argument before running parse_options
     for arg in "$@"; do
         if [[ "$arg" =~ ^[0-9]+$ ]]; then
             line_number="$arg"
@@ -561,13 +611,11 @@ play() {
         fi
     done
 
-    # 2. Strip the number out so parse_options doesn't get confused by it
     local args_clean=()
     for arg in "$@"; do
         [[ "$arg" != "$line_number" ]] && args_clean+=("$arg")
     done
 
-    # 3. Parse your standard flags (-s, -n, -r)
     parse_options "${args_clean[@]}"
     local shift_count=$?
     
@@ -577,21 +625,22 @@ play() {
 
     local playlist="$playlists/.current"
     
-    # 4. Handle specific line playing OR standard playlist generation
     if [[ -n "$line_number" ]]; then
-        # Grab the exact track from the requested line number
         local specific_track
         specific_track=$(sed -n "${line_number}p" "$playlists/.current")
         
         if [[ -z "$specific_track" ]]; then
-            echo "Error: Track #$line_number does not exist in playlist."
+            echo "Error: Track #$line_number does not exist in playlist." >&2
+            exit 1
+        fi
+
+        if [[ ! -f "$specific_track" ]]; then
+            echo "error: file does not exist: $specific_track" >&2
             exit 1
         fi
         
-        # Override playlist target to be just this song, or use it directly
         playlist="$specific_track"
     else
-        # Standard playlist logic if no number is provided
         if [[ $shuf_enabled -eq 1 ]]; then
             shuf "$playlists/.current" > "$playlists/.shuffled"
             echo "1" > "$playlists/.state"
@@ -603,7 +652,6 @@ play() {
 
     [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
 
-    # 5. Play using direct track file/URL OR the playlist file depending on input
     if [[ -n "$line_number" ]]; then
         ( mplayer $repeat -slave -input file="$fifo" "$playlist" -af equalizer="$eq_settings" > /tmp/log 2>&1 &
         [[ $notify_enabled -eq 1 ]] && notify
@@ -626,7 +674,7 @@ dispatch() {
   [[ -z $cmd ]] && usage && exit
   shift
   case "$cmd" in
-    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle|search|playlist)
+    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle|search|playlist|process_tracks)
       "$cmd" "$@"
       ;;
     *)
