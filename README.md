@@ -18,6 +18,8 @@ and error handling prevent this.
 \* Search for tracks by title, genre, album, artist or range of years<br>
 \* Also supports ls and add features to add tracks to playlists<br>
 \* Ability to save, update and load playlists<br>
+\* Show tracks in a playlist
+\* play a track in playlist by line number
 \* Puts Mplayer in the background (slave mode)<br>
 \* Supports repeat and shuffle modes<br>
 \* Trackinfo feature to get information about currently playing track<br>
