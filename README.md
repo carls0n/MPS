@@ -6,6 +6,10 @@
 10.16.2026 changelog<br>
 \* Added ability to play a song in playlist by line number 'mps play 5'<br>
 \* mps showlist -n' will show you line numbers.
+
+10.17.2026 changelog<br>
+\* Better track processing and error handling. Previously using 'mps add' and typing in a track<br>
+that doesn't exist would produce an error in the playlist. Better track processing prevents this.
 <hr>
 
 * Customizable equalizer<br>
