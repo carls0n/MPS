@@ -1,6 +1,6 @@
 10.15.2026 changelog<br>
 \* Changed search syntax from 'mps title <title>' to 'mps search title <title>'<br>
-\* Added the ability to add one track at a time via 'mps add <title>'<br>
+\* Added the ability to add one track at a time via 'mps add <trackname.mp3>'<br>
 \* Added ability to view songs in a playlist via 'mps playlist $playlist'
 
 10.16.2026 changelog<br>
@@ -8,8 +8,8 @@
 \* mps showlist -n' will show you line numbers.
 
 10.17.2026 changelog<br>
-\* Better track processing and error handling. Previously using 'mps add' and typing in a track<br>
-that doesn't exist would produce an error in the playlist. Better track processing prevents this.
+\* Previously, using 'mps add' and typing in a track<br>
+that doesn't exist would produce an error in the playlist. Better track processing and error handling prevent this.
 <hr>
 
 * Customizable equalizer<br>
