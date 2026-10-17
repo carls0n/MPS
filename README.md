@@ -9,7 +9,8 @@
 
 10.17.2026 changelog<br>
 \* Previously, using 'mps add' and typing in a track<br>
-that doesn't exist would produce an error in the playlist. Better track processing and error handling prevent this.
+that doesn't exist would produce an error in the playlist. Better track processing<br>
+and error handling prevent this.
 <hr>
 
 * Customizable equalizer<br>
