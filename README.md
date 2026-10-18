@@ -1,3 +1,4 @@
+<hr>
 10.15.2026 changelog<br>
 \* Changed search syntax from 'mps title <title>' to 'mps search title <title>'<br>
 \* Added the ability to add one track at a time via 'mps add <trackname.mp3>'<br>
