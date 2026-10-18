@@ -11,6 +11,11 @@
 \* Previously, using 'mps add' and typing in a track<br>
 that doesn't exist would produce an error in the playlist. Better track processing<br>
 and error handling prevent this.
+
+10.18.2026 changelog<br>
+\* previously, you would use 'mps ls | mps add' to add all tracks. Now, you can use 'mps add /'<br>
+\* Now you can use 'mps searchplay <track>' to immediately play a song. Flags -n (notify) and -r<br>
+(repeat) can be used also.
 <hr>
 
 ### MPS Features:<br>
