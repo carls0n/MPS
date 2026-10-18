@@ -1,8 +1,9 @@
 <hr>
+
 10.15.2026 changelog<br>
 \* Changed search syntax from 'mps title <title>' to 'mps search title <title>'<br>
 \* Added the ability to add one track at a time via 'mps add <trackname.mp3>'<br>
-\* Added ability to view songs in a playlist via 'mps playlist $playlist'
+\* Added ability to view songs in a playlist via 'mps playlist $playlist'<br>
 
 10.16.2026 changelog<br>
 \* Added ability to play a song in playlist by line number 'mps play 5'<br>
