@@ -27,7 +27,7 @@ cleanup() {
     kill "$pid" 2>/dev/null
     kill "$pid2" 2>/dev/null
 
-    files=(/tmp/log "$fifo" /tmp/album.jpg "$playlists/.shuffled")
+    files=(/tmp/log /tmp/new "$fifo" /tmp/album.jpg "$playlists/.shuffled")
     for file in "${files[@]}"; do
       [[ -e "$file" ]] && rm "$file" 2>/dev/null
     done
@@ -51,6 +51,7 @@ usage() {
   echo "  add - add tracks. Can also be used with ls"
   echo ""
   echo "  play - play tracks in playlist"
+  echo "  searchplay - locate track and play immediately"
   echo "  showlist - show remaining tracks in playlist"
   echo "  pause - pause/unpause music"
   echo "  mute - toggle mplayer mute"
@@ -100,8 +101,6 @@ parse_options() {
    
     return $((OPTIND - 1))
 }
-
-shopt -s nocasematch
 
 type -P mp3info >/dev/null || { echo "Please install mp3info before using this script."; exit; }
 type -P mplayer >/dev/null || { echo "Please install mplayer before using this script."; exit; }
@@ -306,22 +305,26 @@ add() {
 
   local track_status=0
 
-  if [[ $# -gt 0 ]]; then
-    if [[ -n "$test" ]] && [[ -z "$random" ]]; then
+  if [[ "$1" == "/" ]]; then
+    if [[ -d "$music" ]]; then
+      set --
+
+      while IFS= read -r -d '' file; do
+        set -- "$@" "${file#$music/}"
+      done < <(find "$music" -type f -print0|sort -z -f)
+      
       process_tracks "$@"
-      track_status=$?  # 👈 CAPTURE IMMEDIATELY
+      track_status=$?
     else
-      process_tracks "$@"
-      track_status=$?  # 👈 CAPTURE IMMEDIATELY
+      echo "Error: Music directory '$music' does not exist." >&2
+      exit 1
     fi
+  elif [[ $# -gt 0 ]]; then
+    process_tracks "$@"
+    track_status=$?
   else
-    if [[ -n "$test" ]] && [[ -z "$random" ]]; then
-      process_tracks
-      track_status=$?
-    else
-      process_tracks
-      track_status=$?
-    fi
+    process_tracks
+    track_status=$?
   fi
 
   if [[ $track_status -ne 0 ]]; then
@@ -330,6 +333,8 @@ add() {
 
   exit 0
 }
+
+
 
 next() {
   echo "pausing_keep_force pt_step 1" > "$fifo"
@@ -600,6 +605,31 @@ shuffle() {
   shuf "$playlists/.current" > "$playlists/.shuffled"
 }
 
+searchplay() {
+    [[ $test ]] && echo "mplayer already running" && exit
+    parse_options "$@"
+    local shift_count=$?
+    shift "$shift_count"
+ 
+    actual_file=$(find "$music" -maxdepth 1 -iname "$*" -printf "%f" -quit)
+
+    if [[ -z "$actual_file" ]]; then
+        echo "Error: file '$*' does not exist!"
+        return 1
+    fi
+    [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
+
+    (
+        mplayer $repeat -slave -input file="$fifo" "$music/$actual_file" -af equalizer="$eq_settings" > /tmp/log 2>&1 &
+        mplayer_pid=$!
+        
+        [[ $notify_enabled -eq 1 ]] && notify
+        
+        wait "$mplayer_pid" 
+        cleanup 
+    ) &
+}
+
 play() {
     local line_number=""
     local seek_flag=""
@@ -674,7 +704,7 @@ dispatch() {
   [[ -z $cmd ]] && usage && exit
   shift
   case "$cmd" in
-    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle|search|playlist|process_tracks)
+    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle|search|playlist|process_tracks|searchplay)
       "$cmd" "$@"
       ;;
     *)
