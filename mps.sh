@@ -766,8 +766,8 @@ searchplay() {
     local repeat=""
     local eq_on=""
     [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
-    [[ $eq_enabled -eq 1 ]] && eq_on="-af equalizer=$eq_settings"
-
+    [[ $eq_enabled -eq 1 ]] && eq_on="-af equalizer=$eq_settings" && echo "1" > $playlists/.eq || echo "0" > $playlists/.eq
+    
     ( 
         mplayer $repeat -slave -input file="$fifo" "$music/$actual_file" $eq_on> /tmp/log 2>&1 &
         mplayer_pid=$!
