@@ -400,7 +400,7 @@ searchadd() {
   done
 
   if [[ ${#matching_tracks[@]} -gt 0 ]]; then
-    local playlist_dir="/home/marc/.mps"
+    local playlist_dir="$playlists"
     local playlist_file="$playlist_dir/$playlist"
     
     mkdir -p "$playlist_dir"
@@ -800,7 +800,7 @@ play() {
         local shift_count=$?
         
         # Absolute fallback to your verified configuration folder path
-        [[ -z "$playlists" ]] && playlists="/home/marc/.mps"
+        [[ -z "$playlists" ]] && playlists="$playlists"
 
         [[ $test ]] && echo "mplayer already running" && exit
         [[ ! -f "$playlists/.current" ]] && echo "No songs in playlist" && exit
