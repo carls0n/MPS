@@ -51,6 +51,7 @@ usage() {
   echo "  add - add tracks. Can also be used with ls"
   echo ""
   echo "  play - play tracks in playlist"
+  echo "  searchadd - add search results to playlist"
   echo "  searchplay - locate track and play immediately"
   echo "  showlist - show remaining tracks in playlist"
   echo "  pause - pause/unpause music"
@@ -67,6 +68,9 @@ usage() {
   echo "  delete <track number> - delete track"
   echo "  clear - clear playlist"
   echo "  queued - show next track in queue"
+  echo ""
+  echo "  eq on|off - Turn eq on or off"
+  echo "  notify on|off - Turn notifications on or off"
   echo ""
   echo "  save <playlist> - save playlist"
   echo "  update <playlist> - update playlist"
@@ -88,12 +92,14 @@ parse_options() {
     shuf_enabled=0
     repeat_enabled=0
     notify_enabled=0
+    eq_enabled=0
 
-    while getopts "nsrh" opt; do
+    while getopts "nsrhe" opt; do
         case "$opt" in
             s) shuf_enabled=1 ;;
             r) repeat_enabled=1 ;;
             n) notify_enabled=1 ;;
+            e) eq_enabled=1;;
             h) usage; exit 0 ;;
             *) ;;
         esac
@@ -334,7 +340,95 @@ add() {
   exit 0
 }
 
+searchadd() {
+  local search_term="$1"
+  local target file all_tags track_year
+  local matching_tracks=()
+  local playlist=".current" 
 
+  shift 
+  
+  if [[ -z "$search_term" ]]; then
+    echo "Error: Search term cannot be empty." >&2
+    return 1
+  fi
+
+  if [[ $# -gt 0 ]]; then
+    if [[ ! -d "${!#}" ]]; then
+      playlist="${!#}"
+      set -- "${@:1:$#-1}"
+    fi
+  fi
+
+  local targets=()
+  if [[ $# -eq 0 ]]; then
+    targets=( "$music" )
+  else
+    targets=( "$@" )
+  fi
+
+  local is_range=0 start_year=0 end_year=0
+  if [[ "$search_term" =~ ^([0-9]{4})-([0-9]{4})$ ]]; then
+    is_range=1
+    start_year="${BASH_REMATCH[1]}"
+    end_year="${BASH_REMATCH[2]}"
+  fi
+
+  local search_lower="${search_term,,}"
+
+  for target in "${targets[@]}"; do
+    [[ -d "$target" ]] || continue
+
+    while IFS= read -r -d '' file; do
+      all_tags=$(mp3info -p "%t|%l|%a|%g|%y" "$file" 2>/dev/null)
+      
+      if [[ $is_range -eq 1 ]]; then
+        track_year="${all_tags##*|}"
+        
+        if [[ "$track_year" =~ ^[0-9]{4}$ ]] && (( track_year >= start_year && track_year <= end_year )); then
+          matching_tracks+=( "${file#"$music"}" )
+        fi
+      else
+        local tags_lower="${all_tags,,}"
+        if [[ "$tags_lower" == *"$search_lower"* ]]; then
+          matching_tracks+=( "${file#"$music"}" )
+        fi
+      fi
+      
+    done < <(find "$target" -type f -iname "*.mp3" -print0 | sort -z -f)
+  done
+
+  if [[ ${#matching_tracks[@]} -gt 0 ]]; then
+    local playlist_dir="/home/marc/.mps"
+    local playlist_file="$playlist_dir/$playlist"
+    
+    mkdir -p "$playlist_dir"
+    
+    local track added_count=0
+    for track in "${matching_tracks[@]}"; do
+      if echo "$music$track" >> "$playlist_file" 2>/dev/null; then
+        ((added_count++))
+      fi
+    done
+    
+    if [[ $added_count -eq 0 ]]; then
+      echo "Error: Could not write to $playlist_file. Check directory permissions." >&2
+      return 1
+    fi
+    
+    local label="tracks"
+    [[ $added_count -eq 1 ]] && label="track" || label="tracks" 
+    if [[ $playlist_file == *".current" ]]; then
+      echo "Added $added_count $label to current playlist"
+    else
+      echo "Added $added_count $label to playlist -> ${playlist_file##*/}"
+    fi
+
+  else
+    echo "No matching tracks found for: $search_term" >&2
+    return 1
+  fi
+}
 
 next() {
   echo "pausing_keep_force pt_step 1" > "$fifo"
@@ -396,23 +490,43 @@ status() {
   [[ ! $test ]] && printf "mplayer is not running\n" && exit
 
   printf "get_time_pos\nget_percent_pos\n" > "$fifo"
-  sleep 0.1
+  sleep 0.15
 
-  position=$(grep TIME /tmp/log | sed 's/ANS_TIME_POSITION=//; s/\..*//' | tail -n 1)
-  song=$(grep Playing /tmp/log | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
+  local log_tail
+  log_tail=$(tail -n 20 /tmp/log 2>/dev/null)
+  
+  position=$(echo "$log_tail" | grep TIME | sed 's/ANS_TIME_POSITION=//; s/\..*//' | tail -n 1)
+  song=$(grep Playing /tmp/log 2>/dev/null | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
 
-  sec=$(mp3info -p "%S" "$song")
-  duration=$(mp3info -p '%m:%02s' "$song")
+  [[ -z "$position" ]] && position=0
+  [[ -z "$song" ]] && printf "No song metadata found in log.\n" && exit
+
+  sec=$(mp3info -p "%S" "$song" 2>/dev/null)
+  duration=$(mp3info -p '%m:%02s' "$song" 2>/dev/null)
   remain=$((sec - position))
 
-  percent=$(grep PERCENT /tmp/log | sed 's/ANS_PERCENT_POSITION=//' | tail -n 1)
+  percent=$(echo "$log_tail" | grep PERCENT | sed 's/ANS_PERCENT_POSITION=//' | tail -n 1)
+  [[ -z "$percent" ]] && percent=0
 
   repeat=$(pgrep -f "mplayer.*-loop 0" >/dev/null && echo " Repeat: on" || echo " Repeat: off")
-  random=$(grep -q "^1$" "$playlists/.state" && echo " Random: on" || echo " Random: off")
-  notify=$(pgrep -f "tail -n 25 -f /tmp/log" >/dev/null && echo " Notify: on" || echo " Notify: off")
+  random=$(grep -q "^1$" "$playlists/.state" 2>/dev/null && echo " Random: on" || echo " Random: off")
+  eq=$(grep -q "1" "$playlists/.eq" 2>/dev/null && echo " eq: on" || echo " eq: off")
+  notify=$(grep -q "1" "$playlists/.notify" 2>/dev/null && echo " Notify: on" || echo " Notify: off")
+  
+  printf "Remaining: %d:%02d/$duration - (%s%%)%s %s %s %s\n" \
+    $((remain / 60)) $((remain % 60)) "$percent" "$random" "$repeat" "$notify" "$eq"
+}
 
-  printf "Time Remaining: %d:%02d/$duration - (%s%%) %s %s %s\n" \
-    $((remain / 60)) $((remain % 60)) "$percent" "$random" "$repeat" "$notify"
+eq() {
+  if [[ "$1" == "on" ]]; then
+echo "1" > "$playlists/.eq"
+    echo "af_clr" > "$fifo"
+    echo "af_add equalizer=$eq_settings" > "$fifo"
+  elif [[ "$1" == "off" ]]; then
+    echo "af_clr" > "$fifo"
+    echo "af_cmdline equalizer g 0:0:0:0:0:0:0:0:0:0" > "$fifo"
+echo "0" > "$playlists/.eq"
+  fi
 }
 
 playtime() {
@@ -535,6 +649,7 @@ delete() {
 function stop {
 [[ -f $playlists/.state ]] &&
 echo "0" > $playlists/.state && 
+echo "0" > $playlists/.notify && 
 [[ $test ]] && pkill mplayer
 cleanup
 [[ ! $test ]] &&
@@ -543,18 +658,40 @@ echo mps already stopped
 }
 
 notify() {
-    if pgrep -f "tail -n 25 -f /tmp/log" >/dev/null; then
-      echo "notify already enabled"
-      exit
+    nf=$(pgrep -f "tail --follow=name -n 0 /tmp/log")
+
+    if [[ $1 == "off" ]]; then 
+        if [[ -n "$nf" ]]; then
+            kill "$nf"
+        fi
+        echo "0" > "$playlists/.notify"
+        return 0
+    fi
+
+    if [[ -n "$nf" ]]; then
+        echo "notify already enabled"
+        echo "1" > "$playlists/.notify"  
+        return 0
     elif pgrep -x mplayer >/dev/null; then
-      (
-        tail -n 25 -f /tmp/log | grep --line-buffered "Playing" | while read -r line; do
-          song=$(grep Playing /tmp/log | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
-          ffmpeg -y -i "$song" /tmp/album.jpg &
-          wait
-          notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
-        done >/dev/null 2>&1 &
-      )
+        if [[ $1 == "on" || -z $1 ]]; then 
+            echo "1" > "$playlists/.notify"
+
+            local current_song
+            current_song=$(grep Playing /tmp/log 2>/dev/null | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
+            if [[ -f "$current_song" ]]; then
+                ffmpeg -y -i "$current_song" /tmp/album.jpg >/dev/null 2>&1
+                notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$current_song")"
+            fi
+            (
+                tail --follow=name -n 0 /tmp/log | grep --line-buffered "Playing" | while read -r line; do
+                    song=$(grep Playing /tmp/log 2>/dev/null | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
+                    if [[ -f "$song" ]]; then
+                        ffmpeg -y -i "$song" /tmp/album.jpg >/dev/null 2>&1
+                        notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
+                    fi
+                done &
+            ) >/dev/null 2>&1
+        fi
     fi
 }
 
@@ -606,21 +743,33 @@ shuffle() {
 }
 
 searchplay() {
-    [[ $test ]] && echo "mplayer already running" && exit
+    [[ ! -e "$fifo" ]] && mkfifo "$fifo"
+
     parse_options "$@"
     local shift_count=$?
     shift "$shift_count"
  
-    actual_file=$(find "$music" -maxdepth 1 -iname "$*" -printf "%f" -quit)
+    [[ $test ]] && echo "mplayer already running" && return 1
+
+    if [[ -z "$*" ]]; then
+        echo "Error: Please provide a search query!"
+        return 1
+    fi
+
+    actual_file=$(find "$music" -maxdepth 1 -iname "*$**" -printf "%f" -quit)
 
     if [[ -z "$actual_file" ]]; then
         echo "Error: file '$*' does not exist!"
         return 1
     fi
-    [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
 
-    (
-        mplayer $repeat -slave -input file="$fifo" "$music/$actual_file" -af equalizer="$eq_settings" > /tmp/log 2>&1 &
+    local repeat=""
+    local eq_on=""
+    [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
+    [[ $eq_enabled -eq 1 ]] && eq_on="-af equalizer=$eq_settings"
+
+    ( 
+        mplayer $repeat -slave -input file="$fifo" "$music/$actual_file" $eq_on> /tmp/log 2>&1 &
         mplayer_pid=$!
         
         [[ $notify_enabled -eq 1 ]] && notify
@@ -681,15 +830,16 @@ play() {
     fi
 
     [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
+    [[ $eq_enabled -eq 1 ]] &&  eq_on="-af equalizer=$eq_settings" && echo "1" > "$playlists/.eq" || echo "0" > "$playlists/.eq"
 
     if [[ -n "$line_number" ]]; then
-        ( mplayer $repeat -slave -input file="$fifo" "$playlist" -af equalizer="$eq_settings" > /tmp/log 2>&1 &
+        ( mplayer $repeat -slave -input file="$fifo" "$playlist" $eq_on > /tmp/log 2>&1 &
         [[ $notify_enabled -eq 1 ]] && notify
         mplayer_pid=$! 
         wait "$mplayer_pid" 
         cleanup ) &
     else
-        ( mplayer $repeat -slave -input file="$fifo" -playlist "$playlist" -af equalizer="$eq_settings" > /tmp/log 2>&1 &
+        ( mplayer $repeat -slave -input file="$fifo" -playlist "$playlist" $eq_on > /tmp/log 2>&1 &
         [[ $notify_enabled -eq 1 ]] && notify
         mplayer_pid=$! 
         wait "$mplayer_pid" 
@@ -704,7 +854,7 @@ dispatch() {
   [[ -z $cmd ]] && usage && exit
   shift
   case "$cmd" in
-    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle|search|playlist|process_tracks|searchplay)
+    ls|title|album|artist|genre|year|add|play|showlist|pause|mute|next|previous|repeat|stop|trackinfo|albuminfo|status|playtime|delete|clear|queued|save|update|load|remove|lsplaylists|notify|shuffle|search|playlist|process_tracks|searchplay|searchadd|eq)
       "$cmd" "$@"
       ;;
     *)
