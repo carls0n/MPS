@@ -781,87 +781,77 @@ searchplay() {
 }
 
 play() {
-    local line_number=""
-    local seek_flag=""
+        local line_number=""
+        local seek_flag=""
 
-    for arg in "$@"; do
-        if [[ "$arg" =~ ^[0-9]+$ ]]; then
-            line_number="$arg"
-            break
-        fi
-    done
+        for arg in "$@"; do
+            if [[ "$arg" =~ ^[0-9]+$ ]]; then
+                line_number="$arg"
+                break
+            fi
+        done
 
-    local args_clean=()
-    for arg in "$@"; do
-        [[ "$arg" != "$line_number" ]] && args_clean+=("$arg")
-    done
+        local args_clean=()
+        for arg in "$@"; do
+            [[ "$arg" != "$line_number" ]] && args_clean+=("$arg")
+        done
 
-    parse_options "${args_clean[@]}"
-    local shift_count=$?
-    
-    [[ $test ]] && echo "mplayer already running" && exit
-    [[ ! -f $playlists/.current ]] && echo "No songs in playlist" && exit
-    [[ ! -e $fifo ]] && mkfifo "$fifo"
-
-    local playlist="$playlists/.current"
-    
-    if [[ -n "$line_number" ]]; then
-        local specific_track
-        specific_track=$(sed -n "${line_number}p" "$playlists/.current")
+        parse_options "${args_clean[@]}"
+        local shift_count=$?
         
-        if [[ -z "$specific_track" ]]; then
-            echo "Error: Track #$line_number does not exist in playlist." >&2
-            exit 1
-        fi
+        # Absolute fallback to your verified configuration folder path
+        [[ -z "$playlists" ]] && playlists="/home/marc/.mps"
 
-        if [[ ! -f "$specific_track" ]]; then
-            echo "error: file does not exist: $specific_track" >&2
-            exit 1
-        fi
+        [[ $test ]] && echo "mplayer already running" && exit
+        [[ ! -f "$playlists/.current" ]] && echo "No songs in playlist" && exit
+        [[ ! -e "$fifo" ]] && mkfifo "$fifo"
+
+        local playlist=""
         
-        playlist="$specific_track"
-    else
-        if [[ $shuf_enabled -eq 1 ]]; then
-            shuf "$playlists/.current" > "$playlists/.shuffled"
-            echo "1" > "$playlists/.state"
-            playlist="$playlists/.shuffled"
-        else
-            echo "0" > "$playlists/.state"
-        fi
-    fi
-
-    [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
-    [[ $eq_enabled -eq 1 ]] &&  eq_on="-af equalizer=$eq_settings" && echo "1" > "$playlists/.eq" || echo "0" > "$playlists/.eq"
-
-    if [[ -n "$line_number" ]]; then
-        ( 
-            if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
-                eq "on"
-            else
-                eq "off"
+        if [[ -n "$line_number" ]]; then
+            local specific_track
+            specific_track=$(sed -n "${line_number}p" "$playlists/.current")
+            
+            if [[ -z "$specific_track" ]]; then
+                echo "Error: Track #$line_number does not exist in playlist." >&2
+                exit 1
             fi
 
-            mplayer $repeat -slave -input file="$fifo" "$playlist" 2>&1 | while read -r line; do
-                echo "$line" >> /tmp/log
-    
-                if [[ "$line" == *"Playing "* ]]; then
-                    if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
-                        eq "on"
-                    else
-                        eq "off"
-                    fi
-                fi
-            done &
-            
-            [[ $notify_enabled -eq 1 ]] && notify
-            mplayer_pid=$! 
-            wait "$mplayer_pid" 
-            cleanup 
-        ) &
+            # Safely strip out carriage returns and surrounding whitespaces 
+            specific_track="${specific_track//$'\r'/}"
+            specific_track=$(echo "$specific_track" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-    else
+            if [[ ! -f "$specific_track" ]]; then
+                echo "error: file does not exist: $specific_track" >&2
+                exit 1
+            fi
+            
+            playlist="$specific_track"
+        else
+            if [[ $shuf_enabled -eq 1 ]]; then
+                shuf "$playlists/.current" > "$playlists/.shuffled"
+                echo "1" > "$playlists/.state"
+                playlist="$playlists/.shuffled"
+            else
+                echo "0" > "$playlists/.state"
+                playlist="$playlists/.current"
+            fi
+        fi
+
+        [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0" || repeat=""
+        
+        # Streamlined state tracking file initialization
+        if [[ $eq_enabled -eq 1 ]]; then
+            echo "1" > "$playlists/.eq"
+        else
+            echo "0" > "$playlists/.eq"
+        fi
+
+    if [[ -n "$line_number" ]]; then
         ( 
-            mplayer $repeat -slave -input file="$fifo" -playlist "$playlist" 2>&1 | while read -r line; do
+            > /tmp/log
+            # Uses &> >(...) to catch both errors and standard logs completely inside the monitor loop
+            mplayer $repeat -slave -input file="$fifo" "$playlist" &> >(while read -r line; do
                 echo "$line" >> /tmp/log
                 if [[ "$line" == *"Playing "* ]]; then
                     sleep 0.2
@@ -871,10 +861,31 @@ play() {
                         eq "off"
                     fi
                 fi
-            done &
+            done) &
+            mplayer_pid=$! 
             
             [[ $notify_enabled -eq 1 ]] && notify
+            wait "$mplayer_pid" 
+            cleanup 
+        ) &
+    else
+        ( 
+            > /tmp/log
+            # Uses &> >(...) to catch both errors and standard logs completely inside the monitor loop
+            mplayer $repeat -slave -input file="$fifo" -playlist "$playlist" &> >(while read -r line; do
+                echo "$line" >> /tmp/log
+                if [[ "$line" == *"Playing "* ]]; then
+                    sleep 0.2
+                    if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
+                        eq "on"
+                    else
+                        eq "off"
+                    fi
+                fi
+            done) &
             mplayer_pid=$! 
+            
+            [[ $notify_enabled -eq 1 ]] && notify
             wait "$mplayer_pid" 
             cleanup 
         ) &
@@ -882,6 +893,7 @@ play() {
 
     counting &
 }
+
 
 dispatch() {
   local cmd="$1"
