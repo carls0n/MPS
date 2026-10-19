@@ -18,6 +18,14 @@ and error handling prevent this.
 \* previously, you would use 'mps ls | mps add' to add all tracks. Now, you can use 'mps add /'<br>
 \* Now you can use 'mps searchplay <track>' to immediately play a song. Flags -n (notify) and -r<br>
 (repeat) can be used also.
+
+10.19.2026 changelog<br>
+\* Added searchadd. Quickly search title, artist, album, genre and years without specifying which.<br>
+Use 'mps searchadd manson' to add all tracks matching manson to current playlist.<br>
+Use 'mps searchadd manson manson' to add all tracks matching 'manson' to playlist named manson.<br>
+\* Added notifications - turn on or off. 'mps notify on' or turn it on at playtime with the -n flag<br>
+\* Added eq - turn on or off. By default mps now starts without eq (for use with easyeffects, for example)<br>
+You can enable it at playtime with the -e flag, or turn it on or off. 'mps eq on'
 <hr>
 
 ### MPS Features:<br>
