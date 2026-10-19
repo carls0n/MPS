@@ -18,7 +18,8 @@
 music=~/Music
 playlists=~/.mps
 fifo=/tmp/fifo
-eq_settings="8:7:4:1:1:0:1:2:5:5"
+eq_settings="8:7:4:1:1:0:1:2:5:5" #other
+
 
 cleanup() {
   if ! pgrep -x mplayer >/dev/null; then
@@ -833,17 +834,49 @@ play() {
     [[ $eq_enabled -eq 1 ]] &&  eq_on="-af equalizer=$eq_settings" && echo "1" > "$playlists/.eq" || echo "0" > "$playlists/.eq"
 
     if [[ -n "$line_number" ]]; then
-        ( mplayer $repeat -slave -input file="$fifo" "$playlist" $eq_on > /tmp/log 2>&1 &
-        [[ $notify_enabled -eq 1 ]] && notify
-        mplayer_pid=$! 
-        wait "$mplayer_pid" 
-        cleanup ) &
+        ( 
+            # 1. Start MPlayer and pipe output to the monitor loop
+            mplayer $repeat -slave -input file="$fifo" "$playlist" 2>&1 | while read -r line; do
+                echo "$line" >> /tmp/log
+                
+                # 2. Catch when a new song starts loading
+                if [[ "$line" == *"Playing "* ]]; then
+                    sleep 0.2
+                    
+                    # 3. Read saved state and call your exact function
+                    if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
+                        eq "on"
+                    else
+                        eq "off"
+                    fi
+                fi
+            done &
+            
+            [[ $notify_enabled -eq 1 ]] && notify
+            mplayer_pid=$! 
+            wait "$mplayer_pid" 
+            cleanup 
+        ) &
     else
-        ( mplayer $repeat -slave -input file="$fifo" -playlist "$playlist" $eq_on > /tmp/log 2>&1 &
-        [[ $notify_enabled -eq 1 ]] && notify
-        mplayer_pid=$! 
-        wait "$mplayer_pid" 
-        cleanup ) &
+        ( 
+            # Same log monitor logic applied to the playlist execution block
+            mplayer $repeat -slave -input file="$fifo" -playlist "$playlist" 2>&1 | while read -r line; do
+                echo "$line" >> /tmp/log
+                if [[ "$line" == *"Playing "* ]]; then
+                    sleep 0.2
+                    if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
+                        eq "on"
+                    else
+                        eq "off"
+                    fi
+                fi
+            done &
+            
+            [[ $notify_enabled -eq 1 ]] && notify
+            mplayer_pid=$! 
+            wait "$mplayer_pid" 
+            cleanup 
+        ) &
     fi
 
     counting &
