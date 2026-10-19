@@ -835,19 +835,15 @@ play() {
 
     if [[ -n "$line_number" ]]; then
         ( 
-            # 1. Apply EQ BEFORE starting MPlayer so the audio channel is ready
             if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
                 eq "on"
             else
                 eq "off"
             fi
 
-            # 2. Start MPlayer and pipe output to the monitor loop
             mplayer $repeat -slave -input file="$fifo" "$playlist" 2>&1 | while read -r line; do
                 echo "$line" >> /tmp/log
-                
-                # 3. If "eq" sends commands to MPlayer's FIFO rather than system audio,
-                # you can keep this hook but remove the sleep delay entirely.
+    
                 if [[ "$line" == *"Playing "* ]]; then
                     if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
                         eq "on"
@@ -865,7 +861,6 @@ play() {
 
     else
         ( 
-            # Same log monitor logic applied to the playlist execution block
             mplayer $repeat -slave -input file="$fifo" -playlist "$playlist" 2>&1 | while read -r line; do
                 echo "$line" >> /tmp/log
                 if [[ "$line" == *"Playing "* ]]; then
