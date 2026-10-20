@@ -80,7 +80,7 @@ usage() {
   echo "  -s) shuffle songs (random) - use with play"
   echo "  -r) repeat playlist - use with play"
   echo "  -n) use notifications - use with play"
-  echo "  -e) enable equalizer. Use with -p [preset] and play"
+  echo "  -e) enable equalizer. Use with -p [preset]"
   echo ""
 }
 
@@ -590,7 +590,6 @@ eq() {
   done
 
   if [[ "$action" == "list" || "$preset_arg" == "list" || "$preset_arg" == "help" ]]; then
-    
     local profiles
     profiles=$(type set_eq_profile | sed -E -n 's/^[[:space:]]*([a-zA-Z0-9_-]+)\).*/\1/p' | grep -vE 'list|help|\*')
     
@@ -604,16 +603,14 @@ eq() {
     return 0
   fi
 
-
   if [[ "$action" == "off" ]]; then
-    echo "af_clr" > "$fifo"
-    echo "af_cmdline equalizer g 0:0:0:0:0:0:0:0:0:0" > "$fifo"
+    echo "af_cmdline equalizer 0:0:0:0:0:0:0:0:0:0" > "$fifo"
     echo "0" > "$playlists/.eq"
+    echo "0:0:0:0:0:0:0:0:0:0" > "$playlists/.eq_bands"
     [[ $silent -eq 0 ]] && echo "Equalizer disabled."
     return 0
   fi
 
-  # Action: ON
   if [[ "$action" == "on" ]]; then
     if [[ -n "$preset_arg" ]]; then
       set_eq_profile "$preset_arg"
@@ -627,10 +624,10 @@ eq() {
 
     echo "1" > "$playlists/.eq"
     
-    {
-      echo "af_clr"
-      echo "af_add equalizer=$eq_settings"
-    } > "$fifo"
+    # 1. Update live audio context instantly via FIFO
+    echo "af_cmdline equalizer ${eq_settings}" > "$fifo"
+    
+    echo "${eq_settings}" > "$playlists/.eq_bands"
 
     if [[ $silent -eq 0 ]]; then
       if [[ -n "$preset_arg" ]]; then
@@ -645,7 +642,6 @@ eq() {
   echo "Usage: eq [on|off|list] -p [preset] [--silent]"
   return 1
 }
-
 
 playtime() {
   # Select playlist
@@ -982,24 +978,43 @@ play() {
     
     if [[ $eq_enabled -eq 1 ]]; then
         echo "1" > "$playlists/.eq"
+        if [[ -n "$eq_preset" ]]; then
+            set_eq_profile "$eq_preset" >/dev/null 2>&1
+        fi
+        if [[ -z "$eq_settings" ]]; then
+            eq_settings="0:0:0:0:0:0:0:0:0:0"
+        fi
     else
         echo "0" > "$playlists/.eq"
+        eq_settings="0:0:0:0:0:0:0:0:0:0"
     fi
+
+    echo "$eq_settings" > "$playlists/.eq_bands"
+
+    local mplayer_eq_filter="-af equalizer=${eq_settings}"
 
     ( 
         > /tmp/log
         
-        mplayer $repeat -slave -input file="$fifo" $mplayer_target_flag "$playlist" &> >(
+        local track_initialized=0
+
+        mplayer $repeat $mplayer_eq_filter -slave -input file="$fifo" $mplayer_target_flag "$playlist" &> >(
             while read -r line; do
                 echo "$line" >> /tmp/log
                 
                 if [[ "$line" == *"Playing "* ]]; then
-                    sleep 0.2
+                    track_initialized=0
+                fi
+
+                if [[ $track_initialized -eq 0 && "$line" =~ ^A:[[:space:]]*[0-9] ]]; then
+                    track_initialized=1
                     
                     if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
-                        eq "on" --silent
+                        local current_bands
+                        current_bands=$(cat "$playlists/.eq_bands" 2>/dev/null || echo "0:0:0:0:0:0:0:0:0:0")
+                        echo "af_cmdline equalizer ${current_bands}" > "$fifo"
                     else
-                        eq "off" --silent
+                        echo "af_cmdline equalizer 0:0:0:0:0:0:0:0:0:0" > "$fifo"
                     fi
                 fi
             done
@@ -1013,8 +1028,6 @@ play() {
 
     counting &
 }
-
-
 
 dispatch() {
   local cmd="$1"
