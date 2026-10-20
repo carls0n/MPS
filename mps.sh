@@ -100,7 +100,6 @@ set_eq_profile() {
       ;;
     *) 
       echo "Error: Unknown profile '$preset_arg'. Equalizer will not be enabled."
-      echo "Use 'list' or 'help' to see available profiles."
       valid_preset=0 
       ;;
   esac
@@ -268,7 +267,6 @@ search() {
       ;;
   esac
 }
-
 
 process_tracks() {
   > /tmp/new
@@ -646,7 +644,6 @@ export -f set_eq_profile
 export -f eq
 
 playtime() {
-  # Select playlist
   playlist="$playlists/.current"
   [[ -f $playlists/.state && $(<"$playlists/.state") == 1 ]] && \
     playlist="$playlists/.shuffled"
@@ -861,23 +858,22 @@ shuffle() {
 searchplay() {
     [[ ! -e "$fifo" ]] && mkfifo "$fifo"
 
-    # --- FIX 1: Clean flags and isolate search terms exactly like play() ---
-    parse_options "$@"
-    local shift_count=$?
-    
-    # Rebuild a clean array of arguments WITHOUT option flags
     local args_clean=()
-    local skip_next=0
-    for arg in "$@"; do
-        if [[ $skip_next -eq 1 ]]; then
-            skip_next=0
-            continue
+    
+    while [[ $# -gt 0 ]]; do
+        if [[ "$1" == -* ]]; then
+            parse_options "$1" "${2:-}"
+            local shift_count=$?
+            
+            if [[ $shift_count -gt 0 ]]; then
+                shift $shift_count
+            else
+                shift
+            fi
+        else
+            args_clean+=("$1")
+            shift
         fi
-        case "$arg" in
-            -ep) skip_next=1 ;; # Skip option flag and its argument (preset)
-            -*)  continue     ;; # Skip standalone options
-            *)   args_clean+=("$arg") ;;
-        esac
     done
 
     [[ $test ]] && echo "mplayer already running" && return 1
@@ -889,6 +885,9 @@ searchplay() {
 
     local find_args=()
     for term in "${args_clean[@]}"; do
+        if [[ ${#find_args[@]} -gt 0 ]]; then
+            find_args+=( -a )
+        fi
         find_args+=( -iname "*$term*" )
     done
 
@@ -898,17 +897,12 @@ searchplay() {
         echo "Error: file '${args_clean[*]}' does not exist!"
         return 1
     fi
-    # ---------------------------------------------------------------------
 
     local repeat=""
     [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
     
-    # --- FIX 2: Dynamic capture without dropping string into /dev/null ---
     if [[ $eq_enabled -eq 1 ]]; then
         echo "1" > "$playlists/.eq"
-        if [[ -n "$eq_preset" ]]; then
-            eq_settings=$(set_eq_profile "$eq_preset" 2>/dev/null)
-        fi
         if [[ -z "$eq_settings" ]]; then
             eq_settings="0:0:0:0:0:0:0:0:0:0"
         fi
@@ -924,32 +918,7 @@ searchplay() {
         > /tmp/log
         local track_initialized=0
 
-        mplayer $repeat $mplayer_eq_filter -slave -input file="$fifo" "$music/$actual_file" &> >(
-            while read -r line; do
-                echo "$line" >> /tmp/log
-                
-                if [[ "$line" == *"Playing "* ]]; then
-                    track_initialized=0
-                fi
-
-                if [[ $track_initialized -eq 0 && "$line" =~ ^A:[[:space:]]*[0-9] ]]; then
-                    track_initialized=1
-                    
-                    if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
-                        local current_bands
-                        current_bands=$(cat "$playlists/.eq_bands" 2>/dev/null || echo "0:0:0:0:0:0:0:0:0:0")
-                        echo "af_cmdline equalizer ${current_bands}" > "$fifo"
-                    else
-                        echo "af_cmdline equalizer 0:0:0:0:0:0:0:0:0:0" > "$fifo"
-                    fi
-                fi
-            done
-        ) &
-        mplayer_pid=$!
-        
-        [[ $notify_enabled -eq 1 ]] && notify
-        wait "$mplayer_pid"
-        cleanup
+        mplayer $repeat $mplayer_eq_filter -input file="$fifo" "$music/$actual_file" > /tmp/log 2>&1
     ) &
 }
 
