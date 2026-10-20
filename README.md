@@ -29,7 +29,7 @@ You can enable it at playtime with the -e flag, or turn it on or off. 'mps eq on
 
 10.20.2026 changelog<br>
 \* You can now choose a preset when enabling the eq. I have included a few presets already set. You can open<br>
-mps.sh and scroll down to the set_eq_profile function and add your own presets. Type 'mps eq' for options. If you're enabling<br>
+mps.sh and scroll down to the set_eq_profile function and add your own presets. Type 'mps eq' for options. If you're enabling
 the eq at playtime with the -e flag, just make sure to include the -p flag.<br><br>
 Fixed issue with hearing the beginning of a song before eq is applied when using the eq() function<br>
 Fixed issue with searchplay - same issue. Now fixed!
