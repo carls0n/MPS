@@ -124,7 +124,6 @@ parse_options() {
             e) eq_enabled=1 ;;
             p) 
                 preset_specified=1
-                # Call the global helper function at the top
                 set_eq_profile "$OPTARG"
                 ;;
             h) usage; exit 0 ;;
@@ -158,7 +157,7 @@ ls() {
 }
 
 _music_search() {
-  local mode="$1" # 'text', 'year', or 'global'
+  local mode="$1"
   local format_or_query="$2"
   local query="$3"
   
