@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see https://www.gnu.org/licenses/
 
-music=~/Music
-playlists=~/.mps
-fifo=/tmp/fifo
+export music=~/Music
+export playlists=~/.mps
+export fifo=/tmp/fifo
 
 cleanup() {
   if ! pgrep -x mplayer >/dev/null; then
@@ -642,6 +642,8 @@ eq() {
   echo "Usage: eq [on|off|list] -p [preset] [--silent]"
   return 1
 }
+export -f set_eq_profile
+export -f eq
 
 playtime() {
   # Select playlist
@@ -858,53 +860,87 @@ shuffle() {
 
 searchplay() {
     [[ ! -e "$fifo" ]] && mkfifo "$fifo"
+
+    # --- FIX 1: Clean flags and isolate search terms exactly like play() ---
     parse_options "$@"
     local shift_count=$?
-    shift "$shift_count"
+    
+    # Rebuild a clean array of arguments WITHOUT option flags
+    local args_clean=()
+    local skip_next=0
+    for arg in "$@"; do
+        if [[ $skip_next -eq 1 ]]; then
+            skip_next=0
+            continue
+        fi
+        case "$arg" in
+            -ep) skip_next=1 ;; # Skip option flag and its argument (preset)
+            -*)  continue     ;; # Skip standalone options
+            *)   args_clean+=("$arg") ;;
+        esac
+    done
 
     [[ $test ]] && echo "mplayer already running" && return 1
 
-    if [[ -z "$*" ]]; then
+    if [[ ${#args_clean[@]} -eq 0 ]]; then
         echo "Error: Please provide a search query!"
         return 1
     fi
 
     local find_args=()
-    for term in "$@"; do
+    for term in "${args_clean[@]}"; do
         find_args+=( -iname "*$term*" )
     done
 
     actual_file=$(find "$music" -maxdepth 1 "${find_args[@]}" -printf "%f" -quit)
 
     if [[ -z "$actual_file" ]]; then
-        echo "Error: file '$*' does not exist!"
+        echo "Error: file '${args_clean[*]}' does not exist!"
         return 1
     fi
+    # ---------------------------------------------------------------------
 
     local repeat=""
     [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
     
+    # --- FIX 2: Dynamic capture without dropping string into /dev/null ---
     if [[ $eq_enabled -eq 1 ]]; then
         echo "1" > "$playlists/.eq"
+        if [[ -n "$eq_preset" ]]; then
+            eq_settings=$(set_eq_profile "$eq_preset" 2>/dev/null)
+        fi
+        if [[ -z "$eq_settings" ]]; then
+            eq_settings="0:0:0:0:0:0:0:0:0:0"
+        fi
     else
         echo "0" > "$playlists/.eq"
+        eq_settings="0:0:0:0:0:0:0:0:0:0"
     fi
+
+    echo "$eq_settings" > "$playlists/.eq_bands"
+    local mplayer_eq_filter="-af equalizer=${eq_settings}"
 
     (
         > /tmp/log
+        local track_initialized=0
 
-        mplayer $repeat -slave -input file="$fifo" "$music/$actual_file" &> >(
+        mplayer $repeat $mplayer_eq_filter -slave -input file="$fifo" "$music/$actual_file" &> >(
             while read -r line; do
                 echo "$line" >> /tmp/log
                 
                 if [[ "$line" == *"Playing "* ]]; then
-                    sleep 0.2
+                    track_initialized=0
+                fi
+
+                if [[ $track_initialized -eq 0 && "$line" =~ ^A:[[:space:]]*[0-9] ]]; then
+                    track_initialized=1
                     
                     if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
-
-                        eq "on" --silent
+                        local current_bands
+                        current_bands=$(cat "$playlists/.eq_bands" 2>/dev/null || echo "0:0:0:0:0:0:0:0:0:0")
+                        echo "af_cmdline equalizer ${current_bands}" > "$fifo"
                     else
-                        eq "off" --silent
+                        echo "af_cmdline equalizer 0:0:0:0:0:0:0:0:0:0" > "$fifo"
                     fi
                 fi
             done
@@ -916,6 +952,7 @@ searchplay() {
         cleanup
     ) &
 }
+
 
 play() {
     local line_number=""
