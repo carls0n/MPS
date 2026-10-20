@@ -45,7 +45,7 @@ Fixed issue with searchplay - same issue. Now fixed!
 \* play a track in playlist by line number<br>
 \* Searchadd function to add matching tracks to current playlist or optionally to another playlist<br>
 \* Searchplay feature to find a track and play it immediately.<br>
-\* Show tracks in playlist with 'mps playlist \<playlist\>
+\* Show tracks in playlist with 'mps playlist \<playlist\><br>
 \* Puts Mplayer in the background (slave mode)<br>
 \* Supports repeat and shuffle modes<br>
 \* Trackinfo feature to get information about currently playing track<br>
