@@ -18,7 +18,6 @@
 music=~/Music
 playlists=~/.mps
 fifo=/tmp/fifo
-eq_settings="8:7:4:1:1:0:1:2:5:5" 
 
 cleanup() {
   if ! pgrep -x mplayer >/dev/null; then
@@ -69,7 +68,7 @@ usage() {
   echo "  clear - clear playlist"
   echo "  queued - show next track in queue"
   echo ""
-  echo "  eq on|off - Turn eq on or off"
+  echo "  eq [on|off|list] -p [preset] [--silent]" 
   echo "  notify on|off - Turn notifications on or off"
   echo ""
   echo "  save <playlist> - save playlist"
@@ -84,8 +83,29 @@ usage() {
   echo ""
 }
 
-parse_options() {
+eq_settings=""
+valid_preset=0
 
+set_eq_profile() {
+  local preset_arg="$1"
+  case "$preset_arg" in
+    lowbass) eq_settings="6:6:4:1:1:0:1:2:5:5"; valid_preset=1 ;;
+    metal)   eq_settings="8:7:4:1:1:0:1:2:5:5"; valid_preset=1 ;;
+    reggae)  eq_settings="7:6:4:1:1:0:1:2:5:5"; valid_preset=1 ;;
+    rock)    eq_settings="9:8:4:1:1:0:1:2:4:5"; valid_preset=1 ;;
+    list|help)
+      echo "Available profiles: lowbass, metal, reggae, rock"
+      valid_preset=0
+      ;;
+    *) 
+      echo "Error: Unknown profile '$preset_arg'. Equalizer will not be enabled."
+      echo "Use 'list' or 'help' to see available profiles."
+      valid_preset=0 
+      ;;
+  esac
+}
+
+parse_options() {
     local opt
     local OPTIND=1
 
@@ -93,20 +113,38 @@ parse_options() {
     repeat_enabled=0
     notify_enabled=0
     eq_enabled=0
+    
+    local preset_specified=0
 
-    while getopts "nsrhe" opt; do
+    while getopts "nsrhep:" opt; do
         case "$opt" in
             s) shuf_enabled=1 ;;
             r) repeat_enabled=1 ;;
             n) notify_enabled=1 ;;
-            e) eq_enabled=1;;
+            e) eq_enabled=1 ;;
+            p) 
+                preset_specified=1
+                # Call the global helper function at the top
+                set_eq_profile "$OPTARG"
+                ;;
             h) usage; exit 0 ;;
             *) ;;
         esac
     done
+
+    if [[ $eq_enabled -eq 1 ]]; then
+        if [[ $preset_specified -eq 0 ]] || [[ $valid_preset -eq 0 ]]; then
+            if [[ $preset_specified -eq 0 ]]; then
+                echo "Error: Enabling the equalizer requires a preset flag (-p)."
+            fi
+            exit 1
+        fi
+    fi
+
    
     return $((OPTIND - 1))
 }
+
 
 type -P mp3info >/dev/null || { echo "Please install mp3info before using this script."; exit; }
 type -P mplayer >/dev/null || { echo "Please install mplayer before using this script."; exit; }
@@ -517,17 +555,96 @@ status() {
     $((remain / 60)) $((remain % 60)) "$percent" "$random" "$repeat" "$notify" "$eq"
 }
 
+
 eq() {
-  if [[ "$1" == "on" ]]; then
-echo "1" > "$playlists/.eq"
-    echo "af_clr" > "$fifo"
-    echo "af_add equalizer=$eq_settings" > "$fifo"
-  elif [[ "$1" == "off" ]]; then
+  local action=""
+  local preset_arg=""
+  local silent=0
+  valid_preset=0 
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      on|off|list)
+        action="$1"
+        shift
+        ;;
+      -p)
+        if [[ -z "$2" || "$2" == -* ]]; then
+          echo "Error: -p requires a valid preset name."
+          return 1
+        fi
+        preset_arg="$2"
+        shift 2
+        ;;
+      -s|--silent)
+        silent=1
+        shift
+        ;;
+      *)
+        echo "Unknown argument: $1"
+        echo "Usage: eq [on|off|list] -p [preset] [--silent]"
+        return 1
+        ;;
+    esac
+  done
+
+  if [[ "$action" == "list" || "$preset_arg" == "list" || "$preset_arg" == "help" ]]; then
+    
+    local profiles
+    profiles=$(type set_eq_profile | sed -E -n 's/^[[:space:]]*([a-zA-Z0-9_-]+)\).*/\1/p' | grep -vE 'list|help|\*')
+    
+    for p in $profiles; do
+      (
+        eq_settings=""
+        set_eq_profile "$p" >/dev/null 2>&1
+        echo "$p: $eq_settings"
+      )
+    done
+    return 0
+  fi
+
+
+  if [[ "$action" == "off" ]]; then
     echo "af_clr" > "$fifo"
     echo "af_cmdline equalizer g 0:0:0:0:0:0:0:0:0:0" > "$fifo"
-echo "0" > "$playlists/.eq"
+    echo "0" > "$playlists/.eq"
+    [[ $silent -eq 0 ]] && echo "Equalizer disabled."
+    return 0
   fi
+
+  # Action: ON
+  if [[ "$action" == "on" ]]; then
+    if [[ -n "$preset_arg" ]]; then
+      set_eq_profile "$preset_arg"
+      if [[ $valid_preset -eq 0 ]]; then
+        return 1
+      fi
+    elif [[ -z "$eq_settings" ]]; then
+      echo "Error: Use with -p \$preset. Use mps eq list for a list of available presets."
+      return 1
+    fi
+
+    echo "1" > "$playlists/.eq"
+    
+    {
+      echo "af_clr"
+      echo "af_add equalizer=$eq_settings"
+    } > "$fifo"
+
+    if [[ $silent -eq 0 ]]; then
+      if [[ -n "$preset_arg" ]]; then
+        echo "Equalizer enabled with preset '$preset_arg': $eq_settings"
+      else
+        echo "Equalizer re-applied with current settings: $eq_settings"
+      fi
+    fi
+    return 0
+  fi
+
+  echo "Usage: eq [on|off|list] -p [preset] [--silent]"
+  return 1
 }
+
 
 playtime() {
   # Select playlist
@@ -744,11 +861,10 @@ shuffle() {
 
 searchplay() {
     [[ ! -e "$fifo" ]] && mkfifo "$fifo"
-
     parse_options "$@"
     local shift_count=$?
     shift "$shift_count"
- 
+
     [[ $test ]] && echo "mplayer already running" && return 1
 
     if [[ -z "$*" ]]; then
@@ -756,7 +872,12 @@ searchplay() {
         return 1
     fi
 
-    actual_file=$(find "$music" -maxdepth 1 -iname "*$**" -printf "%f" -quit)
+    local find_args=()
+    for term in "$@"; do
+        find_args+=( -iname "*$term*" )
+    done
+
+    actual_file=$(find "$music" -maxdepth 1 "${find_args[@]}" -printf "%f" -quit)
 
     if [[ -z "$actual_file" ]]; then
         echo "Error: file '$*' does not exist!"
@@ -764,18 +885,38 @@ searchplay() {
     fi
 
     local repeat=""
-    local eq_on=""
     [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
-    [[ $eq_enabled -eq 1 ]] && eq_on="-af equalizer=$eq_settings" && echo "1" > $playlists/.eq || echo "0" > $playlists/.eq
     
-    ( 
-        mplayer $repeat -slave -input file="$fifo" "$music/$actual_file" $eq_on> /tmp/log 2>&1 &
+    if [[ $eq_enabled -eq 1 ]]; then
+        echo "1" > "$playlists/.eq"
+    else
+        echo "0" > "$playlists/.eq"
+    fi
+
+    (
+        > /tmp/log
+
+        mplayer $repeat -slave -input file="$fifo" "$music/$actual_file" &> >(
+            while read -r line; do
+                echo "$line" >> /tmp/log
+                
+                if [[ "$line" == *"Playing "* ]]; then
+                    sleep 0.2
+                    
+                    if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
+
+                        eq "on" --silent
+                    else
+                        eq "off" --silent
+                    fi
+                fi
+            done
+        ) &
         mplayer_pid=$!
         
         [[ $notify_enabled -eq 1 ]] && notify
-        
-        wait "$mplayer_pid" 
-        cleanup 
+        wait "$mplayer_pid"
+        cleanup
     ) &
 }
 
@@ -814,7 +955,6 @@ play() {
             return 1
         fi
 
-        # Safely clean out carriage returns and surrounding whitespaces
         specific_track="${specific_track//$'\r'/}"
         specific_track=$(echo "$specific_track" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
@@ -841,29 +981,24 @@ play() {
     
     if [[ $eq_enabled -eq 1 ]]; then
         echo "1" > "$playlists/.eq"
-        local eq_on="-af equalizer=$eq_settings"
     else
         echo "0" > "$playlists/.eq"
-        local eq_on=""
     fi
 
     ( 
         > /tmp/log
         
-        mplayer $repeat -slave -input file="$fifo" $mplayer_target_flag "$playlist" $eq_on &> >(
+        mplayer $repeat -slave -input file="$fifo" $mplayer_target_flag "$playlist" &> >(
             while read -r line; do
                 echo "$line" >> /tmp/log
                 
-                # Check line content safely
                 if [[ "$line" == *"Playing "* ]]; then
-                    # Only execute the dynamic fallback trigger if mplayer didn't start with $eq_on
-                    if [[ -z "$eq_on" ]]; then
-                        sleep 0.2
-                        if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
-                            eq "on"
-                        else
-                            eq "off"
-                        fi
+                    sleep 0.2
+                    
+                    if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
+                        eq "on" --silent
+                    else
+                        eq "off" --silent
                     fi
                 fi
             done
@@ -877,6 +1012,7 @@ play() {
 
     counting &
 }
+
 
 
 dispatch() {
