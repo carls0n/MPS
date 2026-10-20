@@ -26,6 +26,11 @@ Use 'mps searchadd manson manson' to add all tracks matching 'manson' to playlis
 \* Added notifications - turn on or off. 'mps notify on' or turn it on at playtime with the -n flag<br>
 \* Added eq - turn on or off. By default mps now starts without eq (for use with easyeffects, for example)<br>
 You can enable it at playtime with the -e flag, or turn it on or off. 'mps eq on'
+
+10.20.2026 changelog<br>
+\* You can now choose a preset when enabling the eq. I have included a few presets already set. You can open<br>
+mps.sh and scroll down to the set_eq_profile function and add your own presets. Type 'mps eq' for options. If you're enabling<br>
+the eq at playtime with the -e flag, just make sure to include the -p flag.
 <hr>
 
 ### MPS Features:<br>
