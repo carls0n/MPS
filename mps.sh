@@ -80,6 +80,7 @@ usage() {
   echo "  -s) shuffle songs (random) - use with play"
   echo "  -r) repeat playlist - use with play"
   echo "  -n) use notifications - use with play"
+  echo "  -e) enable equalizer. Use with -p [preset] and play"
   echo ""
 }
 
