@@ -37,11 +37,15 @@ Fixed issue with searchplay - same issue. Now fixed!
 
 ### MPS Features:<br>
 \* Customizable equalizer<br>
+\* Customizable presets for eq<br>
 \* Search for tracks by title, genre, album, artist or range of years<br>
 \* Also supports ls and add features to add tracks to playlists<br>
 \* Ability to save, update and load playlists<br>
 \* Show tracks in a playlist<br>
 \* play a track in playlist by line number<br>
+\* Searchadd function to add matching tracks to current playlist or optionally to another playlist<br>
+\* Searchplay feature to find a track and play it immediately.<br>
+\* Show tracks in playlist with 'mps playlist \<playlist\>
 \* Puts Mplayer in the background (slave mode)<br>
 \* Supports repeat and shuffle modes<br>
 \* Trackinfo feature to get information about currently playing track<br>
