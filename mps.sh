@@ -21,11 +21,14 @@ export fifo=/tmp/fifo
 
 cleanup() {
   if ! pgrep -x mplayer >/dev/null; then
-  files=(/tmp/log /tmp/new "$fifo" /tmp/album.jpg "$playlists/.shuffled")
+    files=(/tmp/log /tmp/new "$fifo" /tmp/album.jpg "$playlists/.shuffled")
     for file in "${files[@]}"; do
       [[ -e "$file" ]] && rm "$file" 2>/dev/null
-    pgrep -f "tail" >/dev/null 2>&1 && pkill "tail" 2>/dev/null
-    done
+    pid=$(pgrep -f "tail -n 26 -f /tmp/log")
+    pid2=$(pgrep -f "tail --follow=name -n 0 /tmp/log")
+    [[ -n "$pid" ]] && kill $pid 2>/dev/null
+    [[ -n "$pid2" ]] && kill $pid2 2>/dev/null
+   done
   fi
 }
 
@@ -139,13 +142,10 @@ parse_options() {
     return $((OPTIND - 1))
 }
 
-
-
 type -P mp3info >/dev/null || { echo "Please install mp3info before using this script."; exit; }
 type -P mplayer >/dev/null || { echo "Please install mplayer before using this script."; exit; }
 type -P ffmpeg >/dev/null || { echo "Please install ffmpeg before using this script."; exit; }
 type -P shuf >/dev/null || { echo "Please install shuf before using this script."; exit; }
-
 
 [[ ! -d $music ]] && echo "$music does not exist, edit your music directory in the MPS script." && exit
 
@@ -907,7 +907,7 @@ searchplay() {
         return 1
     fi
 
-    # 2. Swap the playlist file targets cleanly
+
     local target_playlist="$playlists/.current"
     local backup_playlist="$playlists/.current.bak"
     local lock_file="$playlists/.search.lock"
