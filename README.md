@@ -33,7 +33,8 @@ mps.sh and scroll down to the set_eq_profile function and add your own presets. 
 the eq at playtime with the -e flag, just make sure to include the -p flag.<br><br>
 Fixed issue with hearing the beginning of a song before eq is applied when using the eq() function<br>
 Fixed issue with searchplay - same issue. Now fixed!<br>
-Had a problem with the eq() function not maintaining eq across all tracks. Now fixed!
+Had a problem with the eq() function not maintaining eq across all tracks. Now fixed!<br>
+Also had a problem with notify and tail processes being leftover. Fixed Now!
 <hr>
 
 ### MPS Features:<br>
