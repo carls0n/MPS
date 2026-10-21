@@ -21,14 +21,10 @@ export fifo=/tmp/fifo
 
 cleanup() {
   if ! pgrep -x mplayer >/dev/null; then
-    pid=$(pgrep -f "tail -n 25 -f /tmp/log")
-    pid2=$(pgrep -f "tail -n 26 -f /tmp/log")
-    kill "$pid" 2>/dev/null
-    kill "$pid2" 2>/dev/null
-
-    files=(/tmp/log /tmp/new "$fifo" /tmp/album.jpg "$playlists/.shuffled")
+  files=(/tmp/log /tmp/new "$fifo" /tmp/album.jpg "$playlists/.shuffled")
     for file in "${files[@]}"; do
       [[ -e "$file" ]] && rm "$file" 2>/dev/null
+    pgrep -f "tail" >/dev/null 2>&1 && pkill "tail" 2>/dev/null
     done
   fi
 }
@@ -91,9 +87,8 @@ set_eq_profile() {
   local preset_arg="$1"
   case "$preset_arg" in
     lowbass) eq_settings="6:6:4:1:1:0:1:2:5:5"; valid_preset=1 ;;
-    metal)   eq_settings="8:7:4:1:1:0:1:2:5:5"; valid_preset=1 ;;
-    reggae)  eq_settings="7:6:4:1:1:0:1:2:5:5"; valid_preset=1 ;;
-    rock)    eq_settings="9:8:4:1:1:0:1:2:4:5"; valid_preset=1 ;;
+    midbass)  eq_settings="7:6:4:1:1:0:1:2:5:5"; valid_preset=1 ;;
+    highbass)    eq_settings="8:8:4:1:1:0:1:2:4:5"; valid_preset=1 ;;
     list|help)
       echo "Available profiles: lowbass, metal, reggae, rock"
       valid_preset=0
@@ -124,7 +119,6 @@ parse_options() {
             e) eq_enabled=1 ;;
             p) 
                 preset_specified=1
-                # Call the global helper function at the top
                 set_eq_profile "$OPTARG"
                 ;;
             h) usage; exit 0 ;;
@@ -146,10 +140,12 @@ parse_options() {
 }
 
 
+
 type -P mp3info >/dev/null || { echo "Please install mp3info before using this script."; exit; }
 type -P mplayer >/dev/null || { echo "Please install mplayer before using this script."; exit; }
 type -P ffmpeg >/dev/null || { echo "Please install ffmpeg before using this script."; exit; }
 type -P shuf >/dev/null || { echo "Please install shuf before using this script."; exit; }
+
 
 [[ ! -d $music ]] && echo "$music does not exist, edit your music directory in the MPS script." && exit
 
@@ -277,7 +273,6 @@ process_tracks() {
 
   if [ $# -gt 0 ]; then
     for track in "$@"; do
-      # Trim leading whitespace safely
       while [[ "$track" == [[:space:]]* ]]; do
         track="${track#?}"
       done
@@ -554,9 +549,8 @@ status() {
     $((remain / 60)) $((remain % 60)) "$percent" "$random" "$repeat" "$notify" "$eq"
 }
 
-
 eq() {
-  local action=""
+ local action=""
   local preset_arg=""
   local silent=0
   valid_preset=0 
@@ -621,10 +615,7 @@ eq() {
     fi
 
     echo "1" > "$playlists/.eq"
-    
-    # 1. Update live audio context instantly via FIFO
     echo "af_cmdline equalizer ${eq_settings}" > "$fifo"
-    
     echo "${eq_settings}" > "$playlists/.eq_bands"
 
     if [[ $silent -eq 0 ]]; then
@@ -765,44 +756,60 @@ echo "0" > $playlists/.notify &&
 cleanup
 [[ ! $test ]] &&
 echo mps already stopped 
-
 }
 
 notify() {
+    local nf
     nf=$(pgrep -f "tail --follow=name -n 0 /tmp/log")
 
     if [[ $1 == "off" ]]; then 
-        if [[ -n "$nf" ]]; then
-            kill "$nf"
-        fi
         echo "0" > "$playlists/.notify"
+        if [[ -n "$nf" ]]; then
+            kill "$nf" 2>/dev/null
+        fi
+        return 0
+    fi
+
+    if [[ $1 == "on" ]]; then
+        echo "1" > "$playlists/.notify"
+    fi
+
+    local current_state
+    current_state=$(cat "$playlists/.notify" 2>/dev/null || echo "0")
+    
+    if [[ $current_state == "0" && -z $1 ]]; then
         return 0
     fi
 
     if [[ -n "$nf" ]]; then
-        echo "notify already enabled"
-        echo "1" > "$playlists/.notify"  
         return 0
     elif pgrep -x mplayer >/dev/null; then
-        if [[ $1 == "on" || -z $1 ]]; then 
-            echo "1" > "$playlists/.notify"
+        [[ -z $1 ]] && echo "1" > "$playlists/.notify"
 
-            local current_song
-            current_song=$(grep Playing /tmp/log 2>/dev/null | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
-            if [[ -f "$current_song" ]]; then
-                ffmpeg -y -i "$current_song" /tmp/album.jpg >/dev/null 2>&1
-                notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$current_song")"
-            fi
-            (
-                tail --follow=name -n 0 /tmp/log | grep --line-buffered "Playing" | while read -r line; do
+        local current_song
+        current_song=$(grep Playing /tmp/log 2>/dev/null | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
+        if [[ -f "$current_song" ]]; then
+            ffmpeg -y -i "$current_song" /tmp/album.jpg >/dev/null 2>&1
+            notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$current_song")"
+        fi
+
+        (
+            tail --follow=name -n 0 /tmp/log | grep --line-buffered "Playing" | while read -r line; do
+
+                if ! pgrep -x mplayer >/dev/null; then
+                    break
+                fi
+
+                if [[ $(cat "$playlists/.notify" 2>/dev/null) == "1" ]]; then
+                    local song
                     song=$(grep Playing /tmp/log 2>/dev/null | sed 's/Playing//; s/^ //; s/.$//' | tail -n 1)
                     if [[ -f "$song" ]]; then
                         ffmpeg -y -i "$song" /tmp/album.jpg >/dev/null 2>&1
                         notify-send -i /tmp/album.jpg "Now Playing" "$(mp3info -p '%a - %t' "$song")"
                     fi
-                done &
-            ) >/dev/null 2>&1
-        fi
+                fi
+            done &
+        ) >/dev/null 2>&1
     fi
 }
 
@@ -856,25 +863,29 @@ shuffle() {
 searchplay() {
     [[ ! -e "$fifo" ]] && mkfifo "$fifo"
 
+    local flags=()
     local args_clean=()
     
     while [[ $# -gt 0 ]]; do
         if [[ "$1" == -* ]]; then
-            parse_options "$1" "${2:-}"
-            local shift_count=$?
+            flags+=("$1")
             
-            if [[ $shift_count -gt 0 ]]; then
-                shift $shift_count
-            else
-                shift
+            if [[ "$1" == *p ]]; then
+                if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+                    flags+=("$2")
+                    shift
+                fi
             fi
+            shift
         else
             args_clean+=("$1")
             shift
         fi
     done
 
-    [[ $test ]] && echo "mplayer already running" && return 1
+    parse_options "${flags[@]}"
+
+    [[ $test ]] && { echo "mplayer already running"; return 1; }
 
     if [[ ${#args_clean[@]} -eq 0 ]]; then
         echo "Error: Please provide a search query!"
@@ -896,28 +907,39 @@ searchplay() {
         return 1
     fi
 
-    local repeat=""
-    [[ $repeat_enabled -eq 1 ]] && repeat="-loop 0"
-    
-    if [[ $eq_enabled -eq 1 ]]; then
-        echo "1" > "$playlists/.eq"
-        if [[ -z "$eq_settings" ]]; then
-            eq_settings="0:0:0:0:0:0:0:0:0:0"
-        fi
-    else
-        echo "0" > "$playlists/.eq"
-        eq_settings="0:0:0:0:0:0:0:0:0:0"
-    fi
+    # 2. Swap the playlist file targets cleanly
+    local target_playlist="$playlists/.current"
+    local backup_playlist="$playlists/.current.bak"
+    local lock_file="$playlists/.search.lock"
 
-    echo "$eq_settings" > "$playlists/.eq_bands"
-    local mplayer_eq_filter="-af equalizer=${eq_settings}"
+    [[ -f "$target_playlist" ]] && mv "$target_playlist" "$backup_playlist"
+    echo "$music/$actual_file" > "$target_playlist"
+    touch "$lock_file"
 
     (
-        > /tmp/log
-        local track_initialized=0
-
-        mplayer $repeat $mplayer_eq_filter -input file="$fifo" "$music/$actual_file" > /tmp/log 2>&1
+        if [[ $notify_enabled -eq 1 ]]; then
+            set -m
+        else
+            set +m
+        fi
+        
+        play "${flags[@]}"
+        
+        sleep 0.3
+        rm -f "$lock_file"
     ) &
+
+    local timeout=20
+    while [[ -f "$lock_file" && $timeout -gt 0 ]]; do
+        sleep 0.05
+        ((timeout--))
+    done
+    rm -f "$lock_file"
+
+    rm -f "$target_playlist"
+    if [[ -f "$backup_playlist" ]]; then
+        mv "$backup_playlist" "$target_playlist"
+    fi
 }
 
 play() {
@@ -931,12 +953,32 @@ play() {
         fi
     done
 
-    local args_clean=()
-    for arg in "$@"; do
-        [[ "$arg" != "$line_number" ]] && args_clean+=("$arg")
+    local flags=()
+    local search_terms=()
+    
+    while [[ $# -gt 0 ]]; do
+        if [[ -n "$line_number" && "$1" == "$line_number" ]]; then
+            shift
+            continue
+        fi
+
+        if [[ "$1" == -* ]]; then
+            flags+=("$1")
+            
+            if [[ "$1" == *p ]]; then
+                if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+                    flags+=("$2")
+                    shift
+                fi
+            fi
+            shift
+        else
+            search_terms+=("$1")
+            shift
+        fi
     done
 
-    parse_options "${args_clean[@]}"
+    parse_options "${flags[@]}"
     local shift_count=$?
 
     [[ $test ]] && { echo "mplayer already running"; return 1; }
@@ -1005,15 +1047,10 @@ play() {
             while read -r line; do
                 echo "$line" >> /tmp/log
                 
-                # --- FIXED: ZERO-LATENCY BOUNDARY CAPTURE ---
-                # Triggered the exact millisecond the text header hits, before audio begins
                 if [[ "$line" == *"Playing "* ]]; then
                     track_initialized=0
-                    
-                    # 1. Force a non-blocking wake up to open the pipeline
                     echo "get_time_pos" > "$fifo" &
                     
-                    # 2. Instantly push your target equalizer values right behind it
                     if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
                         local current_bands
                         current_bands=$(cat "$playlists/.eq_bands" 2>/dev/null || echo "0:0:0:0:0:0:0:0:0:0")
@@ -1030,14 +1067,18 @@ play() {
         ) &
         mplayer_pid=$! 
         
-        [[ $notify_enabled -eq 1 ]] && notify
+        if [[ $notify_enabled -eq 1 ]]; then
+            notify "on"
+        else
+            notify
+        fi
+        
         wait "$mplayer_pid" 
         cleanup 
     ) &
 
     counting &
 }
-
 
 dispatch() {
   local cmd="$1"
