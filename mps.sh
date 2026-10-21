@@ -124,6 +124,7 @@ parse_options() {
             e) eq_enabled=1 ;;
             p) 
                 preset_specified=1
+                # Call the global helper function at the top
                 set_eq_profile "$OPTARG"
                 ;;
             h) usage; exit 0 ;;
@@ -157,7 +158,7 @@ ls() {
 }
 
 _music_search() {
-  local mode="$1"
+  local mode="$1" # 'text', 'year', or 'global'
   local format_or_query="$2"
   local query="$3"
   
@@ -639,8 +640,6 @@ eq() {
   echo "Usage: eq [on|off|list] -p [preset] [--silent]"
   return 1
 }
-export -f set_eq_profile
-export -f eq
 
 playtime() {
   playlist="$playlists/.current"
@@ -921,7 +920,6 @@ searchplay() {
     ) &
 }
 
-
 play() {
     local line_number=""
     local seek_flag=""
@@ -1007,20 +1005,26 @@ play() {
             while read -r line; do
                 echo "$line" >> /tmp/log
                 
+                # --- FIXED: ZERO-LATENCY BOUNDARY CAPTURE ---
+                # Triggered the exact millisecond the text header hits, before audio begins
                 if [[ "$line" == *"Playing "* ]]; then
                     track_initialized=0
+                    
+                    # 1. Force a non-blocking wake up to open the pipeline
+                    echo "get_time_pos" > "$fifo" &
+                    
+                    # 2. Instantly push your target equalizer values right behind it
+                    if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
+                        local current_bands
+                        current_bands=$(cat "$playlists/.eq_bands" 2>/dev/null || echo "0:0:0:0:0:0:0:0:0:0")
+                        echo "af_cmdline equalizer ${current_bands}" > "$fifo" &
+                    else
+                        echo "af_cmdline equalizer 0:0:0:0:0:0:0:0:0:0" > "$fifo" &
+                    fi
                 fi
 
                 if [[ $track_initialized -eq 0 && "$line" =~ ^A:[[:space:]]*[0-9] ]]; then
                     track_initialized=1
-                    
-                    if [[ $(cat "$playlists/.eq" 2>/dev/null) == "1" ]]; then
-                        local current_bands
-                        current_bands=$(cat "$playlists/.eq_bands" 2>/dev/null || echo "0:0:0:0:0:0:0:0:0:0")
-                        echo "af_cmdline equalizer ${current_bands}" > "$fifo"
-                    else
-                        echo "af_cmdline equalizer 0:0:0:0:0:0:0:0:0:0" > "$fifo"
-                    fi
                 fi
             done
         ) &
@@ -1033,6 +1037,7 @@ play() {
 
     counting &
 }
+
 
 dispatch() {
   local cmd="$1"
