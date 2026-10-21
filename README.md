@@ -34,7 +34,7 @@ the eq at playtime with the -e flag, just make sure to include the -p flag.<br><
 Fixed issue with hearing the beginning of a song before eq is applied when using the eq() function<br>
 Fixed issue with searchplay - same issue. Now fixed!<br>
 Had a problem with the eq() function not maintaining eq across all tracks. Now fixed!<br>
-Also had a problem with notify and tail processes being leftover. Fixed Now!
+Also had a problem with notify and tail processes being leftover. Fixed now also!
 <hr>
 
 ### MPS Features:<br>
