@@ -1,3 +1,11 @@
+Just as a note, if you want to normalize the volume of all the tracks in your collection, I reccomend mp3gain.<br>
+To normalize all tracks -> apply track analysis and adjust to the default target volume (89.0 dB):<br><br>
+```
+cd Music
+```
+```
+mp3gain -r *
+```
 <hr>
 
 10.15.2026 changelog<br>
