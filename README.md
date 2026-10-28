@@ -45,7 +45,8 @@ Fixed issue with searchplay - same issue. Now fixed!<br>
 10.21.2026 changelog<br>
 \* Had a problem with the eq() function not maintaining eq across all tracks. Now fixed!<br>
 \* Also had a problem with notify and tail processes being leftover. Fixed now also!<br>
-\* Targeted kill tail processes, only those started by mps, not indiscriminately<br><br>
+\* Targeted kill tail processes, only those started by mps, not indiscriminately<br>
+
 10.27.2026 changelog<br>
 \* Found an issue with the searchplay function not working right after a reboot. It has been fixed!
 <hr>
