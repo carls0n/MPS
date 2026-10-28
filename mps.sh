@@ -80,6 +80,7 @@ usage() {
   echo "  -r) repeat playlist - use with play"
   echo "  -n) use notifications - use with play"
   echo "  -e) enable equalizer. Use with -p [preset]"
+  echo "  -a) turn on all flags - Use with -p [preset]"
   echo ""
 }
 
@@ -114,8 +115,17 @@ parse_options() {
     
     local preset_specified=0
 
-    while getopts "nsrhep:" opt; do
+    while getopts "nsrheap:" opt; do
         case "$opt" in
+            a) shuf_enabled=1
+            repeat_enabled=1
+            notify_enabled=1
+            eq_enabled=1
+            ;;
+            s) shuf_enabled=1 ;;
+            r) repeat_enabled=1 ;;
+            n) notify_enabled=1 ;;
+            e) eq_enabled=1 ;;
             s) shuf_enabled=1 ;;
             r) repeat_enabled=1 ;;
             n) notify_enabled=1 ;;
@@ -128,6 +138,7 @@ parse_options() {
             *) ;;
         esac
     done
+
 
     if [[ $eq_enabled -eq 1 ]]; then
         if [[ $preset_specified -eq 0 ]] || [[ $valid_preset -eq 0 ]]; then
@@ -866,7 +877,7 @@ searchplay() {
     local flags=()
     local args_clean=()
     
-    # Cleanly separate all flags (including stacked ones like -ep) from search queries
+    # Cleanly separate all flags (including -a) from search queries
     while [[ $# -gt 0 ]]; do
         if [[ "$1" == -* ]]; then
             flags+=("$1")
@@ -885,7 +896,7 @@ searchplay() {
         fi
     done
 
-    # Parse options to set script variables like $notify_enabled or $eq_enabled
+    # This now safely receives the -a flag from the command line
     parse_options "${flags[@]}"
 
     if pgrep -x mplayer >/dev/null; then
@@ -898,28 +909,26 @@ searchplay() {
         return 1
     fi
 
+    # Build search arguments sequentially (find implicitly ANDs them)
     local find_args=()
     for term in "${args_clean[@]}"; do
-        if [[ ${#find_args[@]} -gt 0 ]]; then
-            find_args+=( -a )
-        fi
         find_args+=( -iname "*$term*" )
     done
 
     # Locate the absolute path of the single actual file
     local actual_file
-    actual_file=$(find "$music" -maxdepth 1 "${find_args[@]}" -printf "%p" -quit)
+    actual_file=$(find "$music" -maxdepth 1 \( "${find_args[@]}" \) -printf "%p" -quit)
 
     if [[ -z "$actual_file" ]]; then
         echo "Error: file matching '${args_clean[*]}' does not exist!"
         return 1
     fi
 
-    # Build pure mplayer options without corrupting it with custom script flags
+    # Build pure mplayer options
     local mplayer_opts=(-input "file=$fifo" -slave -quiet)
     [[ $eq_enabled -eq 1 ]] && mplayer_opts+=(-af "channels=2,equalizer=$eq_settings")
 
-       # Run the player workflow in the background cleanly
+    # Run the player workflow in the background cleanly
     (
         if [[ $notify_enabled -eq 1 ]]; then
             set -m
@@ -927,21 +936,16 @@ searchplay() {
             set +m
         fi
         
-        # 1. Background mplayer INSIDE the subshell so we can capture its PID immediately
         mplayer "${mplayer_opts[@]}" "$actual_file" > /tmp/log 2>&1 &
         mplayer_pid=$! 
         
-        # 2. Trigger your notifications immediately while the song starts playing
         if [[ $notify_enabled -eq 1 ]]; then
             notify "on"
         else
             notify
         fi
         
-        # 3. Halt the subshell here until mplayer finishes playing the file
         wait "$mplayer_pid" 
-        
-        # 4. Run cleanup scripts only after the song ends
         cleanup 
     ) &
 
