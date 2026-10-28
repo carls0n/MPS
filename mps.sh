@@ -877,12 +877,10 @@ searchplay() {
     local flags=()
     local args_clean=()
     
-    # Cleanly separate all flags (including -a) from search queries
     while [[ $# -gt 0 ]]; do
         if [[ "$1" == -* ]]; then
             flags+=("$1")
             
-            # Handle option arguments for flags ending in 'p'
             if [[ "$1" == *p ]]; then
                 if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                     flags+=("$2")
@@ -896,7 +894,6 @@ searchplay() {
         fi
     done
 
-    # This now safely receives the -a flag from the command line
     parse_options "${flags[@]}"
 
     if pgrep -x mplayer >/dev/null; then
@@ -909,13 +906,11 @@ searchplay() {
         return 1
     fi
 
-    # Build search arguments sequentially (find implicitly ANDs them)
     local find_args=()
     for term in "${args_clean[@]}"; do
         find_args+=( -iname "*$term*" )
     done
 
-    # Locate the absolute path of the single actual file
     local actual_file
     actual_file=$(find "$music" -maxdepth 1 \( "${find_args[@]}" \) -printf "%p" -quit)
 
@@ -924,11 +919,19 @@ searchplay() {
         return 1
     fi
 
-    # Build pure mplayer options
     local mplayer_opts=(-input "file=$fifo" -slave -quiet)
-    [[ $eq_enabled -eq 1 ]] && mplayer_opts+=(-af "channels=2,equalizer=$eq_settings")
+if [[ $shuf_enabled -eq 1 ]]; then
+            shuf "$playlists/.current" > "$playlists/.shuffled"
+            echo "1" > "$playlists/.state"
+            playlist="$playlists/.shuffled"
+        else
+            echo "0" > "$playlists/.state"
+            playlist="$playlists/.current"
+        fi
+    
+    [[ $repeat_enabled -eq 1 ]] && local repeat="-loop 0" || local repeat=""
+    [[ $eq_enabled -eq 1 ]] && mplayer_opts+=(-af "channels=2,equalizer=$eq_settings") && echo "1" > "$playlists/.eq"
 
-    # Run the player workflow in the background cleanly
     (
         if [[ $notify_enabled -eq 1 ]]; then
             set -m
@@ -936,7 +939,7 @@ searchplay() {
             set +m
         fi
         
-        mplayer "${mplayer_opts[@]}" "$actual_file" > /tmp/log 2>&1 &
+        mplayer $repeat "${mplayer_opts[@]}" "$actual_file" > /tmp/log 2>&1 &
         mplayer_pid=$! 
         
         if [[ $notify_enabled -eq 1 ]]; then
@@ -951,6 +954,7 @@ searchplay() {
 
     counting &
 }
+
 play() {
     local line_number=""
     local seek_flag=""
