@@ -866,10 +866,12 @@ searchplay() {
     local flags=()
     local args_clean=()
     
+    # Cleanly separate all flags (including stacked ones like -ep) from search queries
     while [[ $# -gt 0 ]]; do
         if [[ "$1" == -* ]]; then
             flags+=("$1")
             
+            # Handle option arguments for flags ending in 'p'
             if [[ "$1" == *p ]]; then
                 if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
                     flags+=("$2")
@@ -883,9 +885,13 @@ searchplay() {
         fi
     done
 
+    # Parse options to set script variables like $notify_enabled or $eq_enabled
     parse_options "${flags[@]}"
 
-    [[ $test ]] && { echo "mplayer already running"; return 1; }
+    if pgrep -x mplayer >/dev/null; then
+        echo "mplayer already running"
+        return 1
+    fi
 
     if [[ ${#args_clean[@]} -eq 0 ]]; then
         echo "Error: Please provide a search query!"
@@ -900,22 +906,20 @@ searchplay() {
         find_args+=( -iname "*$term*" )
     done
 
-    actual_file=$(find "$music" -maxdepth 1 "${find_args[@]}" -printf "%f" -quit)
+    # Locate the absolute path of the single actual file
+    local actual_file
+    actual_file=$(find "$music" -maxdepth 1 "${find_args[@]}" -printf "%p" -quit)
 
     if [[ -z "$actual_file" ]]; then
-        echo "Error: file '${args_clean[*]}' does not exist!"
+        echo "Error: file matching '${args_clean[*]}' does not exist!"
         return 1
     fi
 
+    # Build pure mplayer options without corrupting it with custom script flags
+    local mplayer_opts=(-input "file=$fifo" -slave -quiet)
+    [[ $eq_enabled -eq 1 ]] && mplayer_opts+=(-af "channels=2,equalizer=$eq_settings")
 
-    local target_playlist="$playlists/.current"
-    local backup_playlist="$playlists/.current.bak"
-    local lock_file="$playlists/.search.lock"
-
-    [[ -f "$target_playlist" ]] && mv "$target_playlist" "$backup_playlist"
-    echo "$music/$actual_file" > "$target_playlist"
-    touch "$lock_file"
-
+       # Run the player workflow in the background cleanly
     (
         if [[ $notify_enabled -eq 1 ]]; then
             set -m
@@ -923,25 +927,26 @@ searchplay() {
             set +m
         fi
         
-        play "${flags[@]}"
+        # 1. Background mplayer INSIDE the subshell so we can capture its PID immediately
+        mplayer "${mplayer_opts[@]}" "$actual_file" > /tmp/log 2>&1 &
+        mplayer_pid=$! 
         
-        sleep 0.3
-        rm -f "$lock_file"
+        # 2. Trigger your notifications immediately while the song starts playing
+        if [[ $notify_enabled -eq 1 ]]; then
+            notify "on"
+        else
+            notify
+        fi
+        
+        # 3. Halt the subshell here until mplayer finishes playing the file
+        wait "$mplayer_pid" 
+        
+        # 4. Run cleanup scripts only after the song ends
+        cleanup 
     ) &
 
-    local timeout=20
-    while [[ -f "$lock_file" && $timeout -gt 0 ]]; do
-        sleep 0.05
-        ((timeout--))
-    done
-    rm -f "$lock_file"
-
-    rm -f "$target_playlist"
-    if [[ -f "$backup_playlist" ]]; then
-        mv "$backup_playlist" "$target_playlist"
-    fi
+    counting &
 }
-
 play() {
     local line_number=""
     local seek_flag=""
