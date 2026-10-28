@@ -80,7 +80,6 @@ usage() {
   echo "  -r) repeat playlist - use with play"
   echo "  -n) use notifications - use with play"
   echo "  -e) enable equalizer. Use with -p [preset]"
-  echo "  -a) turn on all flags - Use with -p [preset]"
   echo ""
 }
 
@@ -872,7 +871,7 @@ shuffle() {
 }
 
 searchplay() {
-    [[ ! -e "$fifo" ]] && mkfifo "$fifo"
+    #  [[ ! -e "$fifo" ]] && mkfifo "$fifo"
 
     local flags=()
     local args_clean=()
@@ -896,10 +895,7 @@ searchplay() {
 
     parse_options "${flags[@]}"
 
-    if pgrep -x mplayer >/dev/null; then
-        echo "mplayer already running"
-        return 1
-    fi
+    [[ $test ]] && { echo "mplayer already running"; return 1; }
 
     if [[ ${#args_clean[@]} -eq 0 ]]; then
         echo "Error: Please provide a search query!"
@@ -908,52 +904,59 @@ searchplay() {
 
     local find_args=()
     for term in "${args_clean[@]}"; do
+        if [[ ${#find_args[@]} -gt 0 ]]; then
+            find_args+=( -a )
+        fi
         find_args+=( -iname "*$term*" )
     done
 
-    local actual_file
-    actual_file=$(find "$music" -maxdepth 1 \( "${find_args[@]}" \) -printf "%p" -quit)
+    actual_file=$(find "$music" -maxdepth 1 "${find_args[@]}" -printf "%f" -quit)
 
     if [[ -z "$actual_file" ]]; then
-        echo "Error: file matching '${args_clean[*]}' does not exist!"
+        echo "Error: file '${args_clean[*]}' does not exist!"
         return 1
     fi
 
-    local mplayer_opts=(-input "file=$fifo" -slave -quiet)
-if [[ $shuf_enabled -eq 1 ]]; then
+    local target_playlist="$playlists/.current"
+    local backup_playlist="$playlists/.current.bak"
+
+    # 1. Back up your real playlist asset
+    [[ -f "$target_playlist" ]] && mv "$target_playlist" "$backup_playlist"
+    
+    # 2. Populate the single found file path
+    echo "$music/$actual_file" > "$target_playlist"
+
+    # 3. Call play with "1" to target line 1 of the new playlist layout explicitly
+    if [[ $shuf_enabled -eq 1 ]]; then
             shuf "$playlists/.current" > "$playlists/.shuffled"
             echo "1" > "$playlists/.state"
             playlist="$playlists/.shuffled"
         else
             echo "0" > "$playlists/.state"
             playlist="$playlists/.current"
-        fi
-    
+        
+        mplayer_target_flag="-playlist"
+    fi
+
     [[ $repeat_enabled -eq 1 ]] && local repeat="-loop 0" || local repeat=""
-    [[ $eq_enabled -eq 1 ]] && mplayer_opts+=(-af "channels=2,equalizer=$eq_settings") && echo "1" > "$playlists/.eq"
 
-    (
-        if [[ $notify_enabled -eq 1 ]]; then
-            set -m
-        else
-            set +m
-        fi
-        
-        mplayer $repeat "${mplayer_opts[@]}" "$actual_file" > /tmp/log 2>&1 &
-        mplayer_pid=$! 
-        
-        if [[ $notify_enabled -eq 1 ]]; then
-            notify "on"
-        else
-            notify
-        fi
-        
-        wait "$mplayer_pid" 
-        cleanup 
-    ) &
+    if [[ $notify_enabled -eq 1 ]]; then
+        ( set -m; play "${flags[@]}" "1" ) &
+    else
+        ( set +m; play "${flags[@]}" "1" ) &
+    fi
+    local play_pid=$!
 
-    counting &
+    # 4. Stay active in foreground until track wrap-up completes
+    wait "$play_pid"
+
+    # 5. Safe file structure restoration
+    rm -f "$target_playlist"
+    if [[ -f "$backup_playlist" ]]; then
+        mv "$backup_playlist" "$target_playlist"
+    fi
 }
+
 
 play() {
     local line_number=""
