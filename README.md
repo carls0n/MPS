@@ -48,7 +48,8 @@ Fixed issue with searchplay - same issue. Now fixed!<br>
 \* Targeted kill tail processes, only those started by mps, not indiscriminately<br>
 
 10.27.2026 changelog<br>
-\* Found an issue with the searchplay function not working right after a reboot. It has been fixed!
+\* Found an issue with the searchplay function not working right after a reboot. It has been fixed!<br>
+\* Added an -a flag to turn on all flags at playtime. Must be used with -p [preset] since it turns on the -e flag.
 <hr>
 
 ### MPS Features:<br>
