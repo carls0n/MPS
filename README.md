@@ -24,8 +24,7 @@ and error handling prevent this.
 
 10.18.2026 changelog<br>
 \* previously, you would use 'mps ls | mps add' to add all tracks. Now, you can use 'mps add /'<br>
-\* Now you can use 'mps searchplay <track>' to immediately play a song. Flags -n (notify) and -r<br>
-(repeat) can be used also.
+\* Now you can use 'mps searchplay \<track name\>' to immediately play a song.
 
 10.19.2026 changelog<br>
 \* Added searchadd. Quickly search title, artist, album, genre and years without specifying which.<br>
