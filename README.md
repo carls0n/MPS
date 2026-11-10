@@ -1,61 +1,5 @@
 <img width="1600" height="336" alt="Untitled - November 09, 2026 at 22 59 34-2 (2)" src="https://github.com/user-attachments/assets/37396241-e704-4908-be33-ba195cf0e810" />
 
-## MPS
-<b>mplayer script for creating playlists and listening to music</b>
-
-Just as a note, if you want to normalize the volume of all the tracks in your collection, I reccomend mp3gain.<br>
-To normalize all tracks -> apply track analysis and adjust to the default target volume (89.0 dB):<br><br>
-```
-cd Music
-```
-```
-mp3gain -r *
-```
-<hr>
-
-10.15.2026 changelog<br>
-\* Changed search syntax from 'mps title <title>' to 'mps search title <title>'<br>
-\* Added the ability to add one track at a time via 'mps add <trackname.mp3>'<br>
-\* Added ability to view songs in a playlist via 'mps playlist $playlist'<br>
-
-10.16.2026 changelog<br>
-\* Added ability to play a song in playlist by line number 'mps play 5'<br>
-\* mps showlist -n' will show you line numbers.
-
-10.17.2026 changelog<br>
-\* Previously, using 'mps add' and typing in a track<br>
-that doesn't exist would produce an error in the playlist. Better track processing<br>
-and error handling prevent this.
-
-10.18.2026 changelog<br>
-\* previously, you would use 'mps ls | mps add' to add all tracks. Now, you can use 'mps add /'<br>
-\* Now you can use 'mps searchplay \<track name\>' to immediately play a song.
-
-10.19.2026 changelog<br>
-\* Added searchadd. Quickly search title, artist, album, genre and years without specifying which.<br>
-Use 'mps searchadd manson' to add all tracks matching manson to current playlist.<br>
-Use 'mps searchadd manson manson' to add all tracks matching 'manson' to playlist named manson.<br>
-\* Added notifications - turn on or off. 'mps notify on' or turn it on at playtime with the -n flag<br>
-\* Added eq - turn on or off. By default mps now starts without eq (for use with easyeffects, for example)<br>
-You can enable it at playtime with the -e flag, or turn it on or off. 'mps eq on'
-
-10.20.2026 changelog<br>
-\* You can now choose a preset when enabling the eq. I have included a few presets already set. You can open<br>
-mps.sh and scroll down to the set_eq_profile function and add your own presets. Type 'mps eq' for options. If you're enabling
-the eq at playtime with the -e flag, just make sure to include the -p flag.<br><br>
-Fixed issue with hearing the beginning of a song before eq is applied when using the eq() function<br>
-Fixed issue with searchplay - same issue. Now fixed!<br>
-
-10.21.2026 changelog<br>
-\* Had a problem with the eq() function not maintaining eq across all tracks. Now fixed!<br>
-\* Also had a problem with notify and tail processes being leftover. Fixed now also!<br>
-\* Targeted kill tail processes, only those started by mps, not indiscriminately<br>
-
-10.27.2026 changelog<br>
-\* Found an issue with the searchplay function not working right after a reboot. It has been fixed!<br>
-\* Added an -a flag to turn on all flags at playtime. Must be used with -p [preset] since it turns on the -e flag.
-<hr>
-
 ### MPS Features:<br>
 \* Customizable equalizer<br>
 \* Customizable presets for eq<br>
@@ -79,6 +23,16 @@ Fixed issue with searchplay - same issue. Now fixed!<br>
 \* Requires mplayer, mp3info, ffmpeg and shuf be installed. shuf is part of the coreutils package<br>
 \* When updating a playlist after adding songs, you can now use 'mps update sort [ playlist ]' to sort songs alphabetically.<br>
 \* OpenBSD users can install coreutils from the OpenBSD repository and then cp /usr/local/bin/gshuf /usr/local/bin/shuf<br><br>
+
+
+Just as a note, if you want to normalize the volume of all the tracks in your collection, I reccomend mp3gain.<br>
+To normalize all tracks -> apply track analysis and adjust to the default target volume (89.0 dB):<br><br>
+```
+cd Music
+```
+```
+mp3gain -r *
+```
 
 https://github.com/user-attachments/assets/6bd0fd32-4ed9-40f8-a2e3-01883b897f3d
 
