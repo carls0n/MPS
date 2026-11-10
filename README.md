@@ -1,3 +1,8 @@
+<img width="1600" height="336" alt="Untitled - November 09, 2026 at 22 59 34-2 (2)" src="https://github.com/user-attachments/assets/37396241-e704-4908-be33-ba195cf0e810" />
+
+## MPS
+## Mplayer script for creating playlists and listening to music
+
 Just as a note, if you want to normalize the volume of all the tracks in your collection, I reccomend mp3gain.<br>
 To normalize all tracks -> apply track analysis and adjust to the default target volume (89.0 dB):<br><br>
 ```
