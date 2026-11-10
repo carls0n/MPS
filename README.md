@@ -1,4 +1,5 @@
-<img width="1600" height="336" alt="Untitled - November 09, 2026 at 22 59 34-2 (2)" src="https://github.com/user-attachments/assets/37396241-e704-4908-be33-ba195cf0e810" />
+<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/39ec55b7-c2a0-4948-a793-6e4ac38d56ad" />
+
 
 ### MPS Features:<br>
 \* Customizable equalizer<br>
