@@ -1,4 +1,4 @@
-<img width="1269" height="719" alt="github" src="https://github.com/user-attachments/assets/7e4dc6cd-5cc2-4387-b47b-ee9e9c56139a" />
+<!--<img width="1269" height="719" alt="github" src="https://github.com/user-attachments/assets/7e4dc6cd-5cc2-4387-b47b-ee9e9c56139a" />-->
 
 ### MPS Features:<br>
 \* Customizable equalizer<br>
@@ -34,5 +34,5 @@ cd Music
 mp3gain -r *
 ```
 
-https://github.com/user-attachments/assets/6bd0fd32-4ed9-40f8-a2e3-01883b897f3d
+<!--https://github.com/user-attachments/assets/6bd0fd32-4ed9-40f8-a2e3-01883b897f3d-->
 
