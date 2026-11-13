@@ -1,6 +1,6 @@
 <!--<img width="1269" height="719" alt="github" src="https://github.com/user-attachments/assets/7e4dc6cd-5cc2-4387-b47b-ee9e9c56139a" />-->
-
-![url](https://repository-images.githubusercontent.com/664440080/78d5bf4c-45f6-48b3-b9b6-82cbcec63a52)
+![url](https://repository-images.githubusercontent.com/664440080/8f0d75f2-bed3-4075-bf30-0f95c4a09a11)
+<!--![url](https://repository-images.githubusercontent.com/664440080/78d5bf4c-45f6-48b3-b9b6-82cbcec63a52)-->
 
 ### MPS Features:<br>
 \* Customizable equalizer<br>
